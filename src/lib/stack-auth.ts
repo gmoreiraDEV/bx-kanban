@@ -21,7 +21,10 @@ class StackAuthMock {
     if (saved) {
       const data = JSON.parse(saved);
       this.user = data.user;
-      this.spaces = data.spaces;
+      this.spaces = (data.spaces ?? []).map((space: Space) => ({
+        ...space,
+        teamId: space.teamId ?? space.id,
+      }));
       this.currentSpaceId = data.currentSpaceId;
     }
   }
@@ -47,6 +50,7 @@ class StackAuthMock {
       const defaultSpace: Space = {
         id: 'space-' + crypto.randomUUID().slice(0, 8),
         name: 'Personal Workspace',
+        teamId: 'team-' + crypto.randomUUID().slice(0, 8),
         ownerId: this.user.id,
         members: [{ userId: this.user.id, email: this.user.email, role: 'owner' }]
       };
@@ -84,6 +88,7 @@ class StackAuthMock {
     const newSpace: Space = {
       id: 'space-' + crypto.randomUUID().slice(0, 8),
       name,
+      teamId: 'team-' + crypto.randomUUID().slice(0, 8),
       ownerId: this.user.id,
       members: [{ userId: this.user.id, email: this.user.email, role: 'owner' }]
     };
