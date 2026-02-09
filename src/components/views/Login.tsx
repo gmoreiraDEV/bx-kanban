@@ -4,12 +4,13 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { stackAuth } from '@/lib/stack-auth';
-import { Mail, Lock, Layout, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, Layout } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const user = stackAuth.useUser();
 
@@ -73,10 +74,10 @@ const LoginPage: React.FC = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="password"
-                  disabled
                   placeholder="••••••••"
-                  className="w-full pl-11 pr-4 py-3 bg-slate-100 border border-slate-200 rounded-xl outline-none opacity-50 cursor-not-allowed font-medium"
-                  value="password"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-medium"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
             </div>
@@ -94,17 +95,7 @@ const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-slate-100">
-            <div className="flex items-center gap-2 text-slate-400 text-xs justify-center font-medium">
-              <ShieldCheck className="w-4 h-4" />
-              Autenticado via <span className="text-slate-900 font-bold">Stack Auth</span>
-            </div>
-          </div>
         </div>
-
-        <p className="text-center text-slate-400 text-sm mt-8">
-          Novo por aqui? <span className="text-blue-600 font-bold hover:underline cursor-pointer">Crie uma conta gratuita</span>
-        </p>
       </div>
     </div>
   );
