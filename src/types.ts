@@ -11,6 +11,7 @@ export interface User {
 export interface Space {
   id: string;
   name: string;
+  teamId: string;
   ownerId: string;
   members: SpaceMember[];
 }
