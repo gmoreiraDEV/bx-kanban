@@ -1,7 +1,7 @@
 'use client'
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { 
   DndContext, 
   DragOverlay, 
@@ -22,11 +22,11 @@ import {
   verticalListSortingStrategy,
   horizontalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { db } from '@/db';
 import { stackAuth } from '@/lib/stack-auth';
+import { kanbanApi } from '@/lib/kanbanApi';
 import { Column as ColumnType, Card as CardType } from '@/types';
 import Column from './Column';
-import { Plus, Settings2, MoreHorizontal } from 'lucide-react';
+import { Plus, Settings2 } from 'lucide-react';
 
 interface BoardProps {
   boardId: string;
@@ -43,20 +43,17 @@ const Board: React.FC<BoardProps> = ({ boardId }) => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const loadData = () => {
+  const loadData = useCallback(async () => {
     if (!currentSpace) return;
-    const cols = db.getColumns(boardId);
+    const cols = await kanbanApi.getColumns(boardId);
     setColumns(cols);
-    const allCards: CardType[] = [];
-    cols.forEach(col => {
-      allCards.push(...db.getCards(col.id));
-    });
-    setCards(allCards);
-  };
+    const cardsByColumn = await Promise.all(cols.map(col => kanbanApi.getCards(col.id)));
+    setCards(cardsByColumn.flat());
+  }, [boardId, currentSpace]);
 
   useEffect(() => {
-    loadData();
-  }, [boardId]);
+    void loadData();
+  }, [loadData]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
@@ -92,7 +89,7 @@ const Board: React.FC<BoardProps> = ({ boardId }) => {
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) {
       setActiveCard(null);
@@ -116,24 +113,24 @@ const Board: React.FC<BoardProps> = ({ boardId }) => {
           newIndex = columnCards.findIndex(c => c.id === overId);
         }
         
-        db.moveCard(activeId, targetColumnId, newIndex);
-        loadData();
+        await kanbanApi.updateCard({ id: activeId, columnId: targetColumnId, position: newIndex });
+        await loadData();
       }
     }
 
     setActiveCard(null);
   };
 
-  const addColumn = () => {
+  const addColumn = async () => {
     const title = prompt('Nome da coluna:');
     if (title && currentSpace) {
-      db.createColumn({
+      await kanbanApi.createColumn({
         tenantId: currentSpace.id,
         boardId,
         title,
         position: columns.length
       });
-      loadData();
+      await loadData();
     }
   };
 
