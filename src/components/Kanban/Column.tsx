@@ -6,9 +6,9 @@ import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { Column as ColumnType, Card as CardType } from '@/types';
 import Card from './Card';
-import { db } from '@/db';
 import { stackAuth } from '@/lib/stack-auth';
-import { MoreVertical, Plus, Trash2 } from 'lucide-react';
+import { kanbanApi } from '@/lib/kanbanApi';
+import { Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ColumnProps {
@@ -29,10 +29,10 @@ const Column: React.FC<ColumnProps> = ({ column, cards, onUpdate }) => {
     transform: CSS.Translate.toString(transform),
   };
 
-  const addCard = () => {
+  const addCard = async () => {
     const title = prompt('Título do card:');
     if (title && currentSpace) {
-      db.createCard({
+      await kanbanApi.createCard({
         tenantId: currentSpace.id,
         boardId: column.boardId,
         columnId: column.id,
@@ -44,9 +44,9 @@ const Column: React.FC<ColumnProps> = ({ column, cards, onUpdate }) => {
     }
   };
 
-  const removeColumn = () => {
+  const removeColumn = async () => {
     if (confirm('Deseja realmente excluir esta coluna e todos os seus cards?')) {
-      db.deleteColumn(column.id);
+      await kanbanApi.deleteColumn(column.id);
       onUpdate();
     }
   };

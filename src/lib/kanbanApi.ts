@@ -1,0 +1,105 @@
+import { Board, Card, Column } from '@/types';
+
+type ApiResponse<T> = {
+  data: T;
+  error?: string;
+};
+
+const apiFetch = async <T>(input: RequestInfo, init?: RequestInit): Promise<T> => {
+  const response = await fetch(input, init);
+  const payload = (await response.json()) as ApiResponse<T>;
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? 'Erro inesperado na API.');
+  }
+
+  return payload.data;
+};
+
+export const kanbanApi = {
+  getBoards: (tenantId: string) =>
+    apiFetch<Board[]>(`/api/kanban/boards?tenantId=${tenantId}`),
+  createBoard: (data: { tenantId: string; title: string }) =>
+    apiFetch<Board>('/api/kanban/boards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  getColumns: (boardId: string) =>
+    apiFetch<Column[]>(`/api/kanban/columns?boardId=${boardId}`),
+  createColumn: (data: { tenantId: string; boardId: string; title: string; position: number }) =>
+    apiFetch<Column>('/api/kanban/columns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  deleteColumn: (id: string) =>
+    apiFetch<null>(`/api/kanban/columns?id=${id}`, {
+      method: 'DELETE',
+    }),
+  getCards: (columnId: string) =>
+    apiFetch<Card[]>(`/api/kanban/cards?columnId=${columnId}`),
+  createCard: (data: {
+    tenantId: string;
+    boardId: string;
+    columnId: string;
+    title: string;
+    description?: string;
+    position: number;
+  }) =>
+    apiFetch<Card>('/api/kanban/cards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  updateCard: (data: {
+    id: string;
+    title?: string;
+    description?: string;
+    columnId?: string;
+    position?: number;
+  }) =>
+    apiFetch<Card>('/api/kanban/cards', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+};
+
+export const bootstrapKanban = async (tenantId: string) => {
+  const boards = await kanbanApi.getBoards(tenantId);
+  if (boards.length > 0) {
+    return boards[0];
+  }
+
+  const board = await kanbanApi.createBoard({ tenantId, title: 'Meu Kanban' });
+  const todo = await kanbanApi.createColumn({
+    tenantId,
+    boardId: board.id,
+    title: 'To Do',
+    position: 0,
+  });
+  const inProgress = await kanbanApi.createColumn({
+    tenantId,
+    boardId: board.id,
+    title: 'In Progress',
+    position: 1,
+  });
+  await kanbanApi.createColumn({
+    tenantId,
+    boardId: board.id,
+    title: 'Done',
+    position: 2,
+  });
+
+  await kanbanApi.createCard({
+    tenantId,
+    boardId: board.id,
+    columnId: todo.id,
+    title: 'Bem-vindo ao Kanban',
+    description: 'Arraste este card para as outras colunas para testar.',
+    position: 0,
+  });
+
+  return board;
+};

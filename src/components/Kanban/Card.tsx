@@ -5,8 +5,8 @@ import React, { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card as CardType } from '@/types';
-import { db } from '@/db';
-import { MoreHorizontal, Calendar, AlignLeft, CheckCircle2 } from 'lucide-react';
+import { kanbanApi } from '@/lib/kanbanApi';
+import { MoreHorizontal, Calendar, AlignLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CardProps {
@@ -35,8 +35,8 @@ const Card: React.FC<CardProps> = ({ card, onUpdate }) => {
     transform: CSS.Translate.toString(transform),
   };
 
-  const handleSave = () => {
-    db.updateCard(card.id, { title });
+  const handleSave = async () => {
+    await kanbanApi.updateCard({ id: card.id, title });
     setIsEditing(false);
     onUpdate();
   };

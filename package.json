@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "npm run db:generate && npm run db:migrate",
     "build": "next build",
-    "prestart": "drizzle-kit migrate",
     "start": "next start",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"

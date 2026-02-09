@@ -38,3 +38,21 @@ export const POST = async (request: Request) => {
 
   return NextResponse.json({ data: column }, { status: 201 });
 };
+
+export const DELETE = async (request: Request) => {
+  const { searchParams } = new URL(request.url);
+  const body = request.headers.get('content-type')?.includes('application/json')
+    ? await request.json()
+    : null;
+  const id = searchParams.get('id') ?? (body?.id as string | undefined);
+
+  if (!id) {
+    return NextResponse.json({ error: 'id is required.' }, { status: 400 });
+  }
+
+  const store = getApiStore();
+  store.columns = store.columns.filter(column => column.id !== id);
+  store.cards = store.cards.filter(card => card.columnId !== id);
+
+  return NextResponse.json({ data: null }, { status: 200 });
+};
