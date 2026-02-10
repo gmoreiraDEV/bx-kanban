@@ -15,6 +15,8 @@ interface BoardsPageProps {
   boardId?: string;
 }
 
+const OPEN_CREATE_BOARD_EVENT = 'boards:create';
+
 const BoardsPage: React.FC<BoardsPageProps> = ({ boardId }) => {
   const router = useRouter();
   const currentSpace = stackAuth.useCurrentSpace();
@@ -45,6 +47,17 @@ const BoardsPage: React.FC<BoardsPageProps> = ({ boardId }) => {
   useEffect(() => {
     void loadBoards();
   }, [loadBoards]);
+
+  useEffect(() => {
+    const openCreateModal = () => {
+      setIsCreateModalOpen(true);
+    };
+
+    window.addEventListener(OPEN_CREATE_BOARD_EVENT, openCreateModal);
+    return () => {
+      window.removeEventListener(OPEN_CREATE_BOARD_EVENT, openCreateModal);
+    };
+  }, []);
 
   const selectedBoard = useMemo(
     () => (boardId ? boards.find(board => board.id === boardId) : undefined),
@@ -270,72 +283,6 @@ const BoardsPage: React.FC<BoardsPageProps> = ({ boardId }) => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="border-b bg-white px-6 py-4 flex-shrink-0">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-800">Meus Boards</h2>
-            <p className="text-sm text-slate-500">Board atual: {selectedBoard.title}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => router.push('/boards')}
-              className="px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              Gerenciar todos
-            </button>
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              disabled={isCreating}
-              className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Novo board
-            </button>
-          </div>
-        </div>
-        <div className="mt-3 flex items-stretch gap-2 overflow-x-auto pb-1">
-          {orderedBoards.map(board => {
-            const isActive = board.id === boardId;
-            const isBusy = isMutatingBoardId === board.id;
-
-            return (
-              <div
-                key={board.id}
-                className={`flex items-center gap-2 rounded-xl border px-3 py-2 min-w-fit ${
-                  isActive ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-slate-50'
-                }`}
-              >
-                <button
-                  onClick={() => router.push(`/boards/${board.id}`)}
-                  className={`text-sm font-medium whitespace-nowrap ${
-                    isActive ? 'text-blue-700' : 'text-slate-700'
-                  }`}
-                >
-                  {board.title}
-                </button>
-                <button
-                  onClick={() => setBoardToRename(board)}
-                  disabled={isBusy}
-                  className="p-1 rounded text-slate-500 hover:text-slate-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label={`Renomear ${board.title}`}
-                  title="Renomear"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setBoardToDelete(board)}
-                  disabled={isBusy}
-                  className="p-1 rounded text-red-500 hover:text-red-600 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label={`Excluir ${board.title}`}
-                  title="Excluir"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="flex-1 min-h-0">
         <KanbanBoard boardId={selectedBoard.id} boardTitle={selectedBoard.title} />
       </div>
@@ -350,33 +297,6 @@ const BoardsPage: React.FC<BoardsPageProps> = ({ boardId }) => {
         isSubmitting={isCreating}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={createBoard}
-      />
-      <TextInputModal
-        isOpen={Boolean(boardToRename)}
-        title="Renomear board"
-        description="Atualize o nome do board."
-        label="Nome do board"
-        submitLabel="Salvar nome"
-        initialValue={boardToRename?.title ?? ''}
-        isSubmitting={Boolean(isMutatingBoardId)}
-        onClose={() => setBoardToRename(null)}
-        onSubmit={async title => {
-          if (!boardToRename) return;
-          await renameBoard(boardToRename, title);
-        }}
-      />
-      <ConfirmModal
-        isOpen={Boolean(boardToDelete)}
-        title="Excluir board"
-        description={`Deseja excluir "${boardToDelete?.title ?? ''}"? Esta ação remove também colunas e cards.`}
-        confirmLabel="Excluir board"
-        tone="danger"
-        isConfirming={Boolean(isMutatingBoardId)}
-        onClose={() => setBoardToDelete(null)}
-        onConfirm={async () => {
-          if (!boardToDelete) return;
-          await deleteBoard(boardToDelete);
-        }}
       />
     </div>
   );

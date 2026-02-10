@@ -6,18 +6,23 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import { stackAuth } from '@/lib/stack-auth';
-import { LogOut, Bell, Search, Settings } from 'lucide-react';
+import { LogOut, Bell, Search, Settings, LayoutGrid, Plus } from 'lucide-react';
 
 const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
   const user = stackAuth.useUser();
   const currentSpace = stackAuth.useCurrentSpace();
   const pathname = usePathname();
+  const isBoardsPage = pathname.startsWith('/boards');
 
   const getPageTitle = () => {
     if (pathname.includes('/boards')) return 'Boards';
     if (pathname.includes('/pages')) return 'Pages';
     if (pathname.includes('/settings')) return 'Settings';
     return 'Dashboard';
+  };
+
+  const openCreateBoardModal = () => {
+    window.dispatchEvent(new CustomEvent('boards:create'));
   };
 
   return (
@@ -28,6 +33,26 @@ const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
         <header className="h-16 border-b bg-white px-6 flex items-center justify-between flex-shrink-0 z-10">
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-semibold text-slate-800">{getPageTitle()}</h2>
+            {isBoardsPage ? (
+              <div className="flex items-center gap-1">
+                <Link
+                  href="/boards"
+                  className="w-8 h-8 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors flex items-center justify-center"
+                  aria-label="Gerenciar boards"
+                  title="Gerenciar boards"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </Link>
+                <button
+                  onClick={openCreateBoardModal}
+                  className="w-8 h-8 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors flex items-center justify-center"
+                  aria-label="Novo board"
+                  title="Novo board"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            ) : null}
           </div>
           
           <div className="flex items-center gap-4">
