@@ -53,6 +53,17 @@ export interface Card {
   updatedAt: string;
 }
 
+export interface CardComment {
+  id: string;
+  tenantId: string;
+  cardId: string;
+  authorUserId: string;
+  authorName: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Page {
   id: string;
   tenantId: string;

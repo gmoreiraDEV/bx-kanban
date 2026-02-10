@@ -1,4 +1,4 @@
-import { Board, Card, Column } from '@/types';
+import { Board, Card, CardComment, Column } from '@/types';
 import { apiFetch } from '@/lib/apiClient';
 
 export const kanbanApi = {
@@ -46,6 +46,26 @@ export const kanbanApi = {
   }) =>
     apiFetch<Card>('/api/kanban/cards', {
       method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  deleteCard: (id: string) =>
+    apiFetch<null>(`/api/kanban/cards?id=${id}`, {
+      method: 'DELETE',
+    }),
+  getCardComments: (cardId: string, tenantId: string) =>
+    apiFetch<CardComment[]>(`/api/kanban/cards/${cardId}/comments?tenantId=${tenantId}`),
+  createCardComment: (
+    cardId: string,
+    data: {
+      tenantId: string;
+      authorUserId: string;
+      authorName: string;
+      content: string;
+    }
+  ) =>
+    apiFetch<CardComment>(`/api/kanban/cards/${cardId}/comments`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),

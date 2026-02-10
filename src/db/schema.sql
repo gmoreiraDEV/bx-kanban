@@ -56,6 +56,19 @@ CREATE TABLE IF NOT EXISTS cards (
 
 CREATE INDEX IF NOT EXISTS cards_column_position_idx ON cards (column_id, position);
 
+CREATE TABLE IF NOT EXISTS card_comments (
+  id UUID PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+  author_user_id TEXT NOT NULL,
+  author_name TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS card_comments_card_created_idx ON card_comments (card_id, created_at);
+
 CREATE TABLE IF NOT EXISTS pages (
   id UUID PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,

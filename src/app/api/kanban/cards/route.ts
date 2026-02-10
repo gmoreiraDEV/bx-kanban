@@ -164,3 +164,29 @@ export const PATCH = async (request: Request) => {
   const [updated] = await db.select().from(cards).where(eq(cards.id, id)).limit(1);
   return NextResponse.json({ data: mapCard(updated) });
 };
+
+export const DELETE = async (request: Request) => {
+  const { searchParams } = new URL(request.url);
+  const body = request.headers.get('content-type')?.includes('application/json')
+    ? await request.json()
+    : null;
+  const id = searchParams.get('id') ?? (body?.id as string | undefined);
+
+  if (!id) {
+    return NextResponse.json({ error: 'id is required.' }, { status: 400 });
+  }
+
+  const existing = await db.select().from(cards).where(eq(cards.id, id)).limit(1);
+  if (existing.length === 0) {
+    return NextResponse.json({ error: 'Card not found.' }, { status: 404 });
+  }
+
+  const current = existing[0];
+
+  await db.transaction(async tx => {
+    await tx.delete(cards).where(eq(cards.id, id));
+    await reorderColumn(tx, current.columnId, null, null);
+  });
+
+  return NextResponse.json({ data: null }, { status: 200 });
+};

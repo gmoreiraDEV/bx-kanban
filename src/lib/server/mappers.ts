@@ -1,5 +1,5 @@
-import { Board, Card, Column, Page, PageInviteToken, Space, SpaceMember } from '@/types';
-import { boards, cards, columns, pageInviteTokens, pages, tenantMembers, tenants } from '@/db/schema';
+import { Board, Card, CardComment, Column, Page, PageInviteToken, Space, SpaceMember } from '@/types';
+import { boards, cardComments, cards, columns, pageInviteTokens, pages, tenantMembers, tenants } from '@/db/schema';
 
 const toIsoString = (value: Date | string | null | undefined) => {
   if (!value) return null;
@@ -33,6 +33,17 @@ export const mapCard = (row: typeof cards.$inferSelect): Card => ({
   title: row.title,
   description: row.description,
   position: row.position,
+  createdAt: toIsoString(row.createdAt) ?? new Date().toISOString(),
+  updatedAt: toIsoString(row.updatedAt) ?? new Date().toISOString(),
+});
+
+export const mapCardComment = (row: typeof cardComments.$inferSelect): CardComment => ({
+  id: row.id,
+  tenantId: row.tenantId,
+  cardId: row.cardId,
+  authorUserId: row.authorUserId,
+  authorName: row.authorName,
+  content: row.content,
   createdAt: toIsoString(row.createdAt) ?? new Date().toISOString(),
   updatedAt: toIsoString(row.updatedAt) ?? new Date().toISOString(),
 });

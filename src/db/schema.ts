@@ -79,6 +79,27 @@ table => ({
   columnPositionIdx: index('cards_column_position_idx').on(table.columnId, table.position),
 }));
 
+export const cardComments = pgTable(
+  'card_comments',
+  {
+    id: text('id').primaryKey(),
+    tenantId: text('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    cardId: text('card_id')
+      .notNull()
+      .references(() => cards.id, { onDelete: 'cascade' }),
+    authorUserId: text('author_user_id').notNull(),
+    authorName: text('author_name').notNull(),
+    content: text('content').notNull(),
+    createdAt: timestampWithTimezone('created_at'),
+    updatedAt: timestampWithTimezone('updated_at'),
+  },
+  table => ({
+    cardCreatedIdx: index('card_comments_card_created_idx').on(table.cardId, table.createdAt),
+  })
+);
+
 export const pages = pgTable('pages', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id')
