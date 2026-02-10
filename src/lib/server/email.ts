@@ -17,7 +17,7 @@ const getResendApiKey = () => {
 };
 
 const getFromEmail = () =>
-  process.env.RESEND_FROM_EMAIL?.trim() || 'Kanban Pro <onboarding@resend.dev>';
+  process.env.RESEND_FROM_EMAIL?.trim() || 'Forge <onboarding@resend.dev>';
 
 type SendEmailInput = {
   to: string;
@@ -68,7 +68,7 @@ export const sendSpaceInviteEmail = async (input: SendSpaceInviteEmailInput) => 
   const subject = `Você foi convidado para o espaço "${input.spaceName}"`;
   const html = `
     <div style="font-family: Inter, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #0f172a;">
-      <h2 style="font-size: 20px; margin-bottom: 12px;">Convite para o Kanban Pro</h2>
+      <h2 style="font-size: 20px; margin-bottom: 12px;">Convite para o Forge</h2>
       <p style="font-size: 14px; line-height: 1.6; margin: 0 0 10px;">
         ${inviterLabel} convidou você para o espaço <strong>${safeSpaceName}</strong>.
       </p>
@@ -79,7 +79,7 @@ export const sendSpaceInviteEmail = async (input: SendSpaceInviteEmailInput) => 
         href="${loginUrl}"
         style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none; padding: 10px 14px; border-radius: 8px; font-weight: 600; font-size: 14px;"
       >
-        Abrir Kanban Pro
+        Abrir Forge
       </a>
       <p style="font-size: 12px; color: #64748b; margin-top: 18px;">
         Se você não esperava este convite, pode ignorar este e-mail.
@@ -87,7 +87,7 @@ export const sendSpaceInviteEmail = async (input: SendSpaceInviteEmailInput) => 
     </div>
   `;
   const text = [
-    'Convite para o Kanban Pro',
+    'Convite para o Forge',
     '',
     `${input.inviterName || input.inviterEmail || 'Um membro da equipe'} convidou você para o espaço "${input.spaceName}".`,
     'Para entrar, abra o app e faça login com este e-mail.',

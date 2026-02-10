@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Kanban & Pages Pro',
+  title: 'Forge',
   description: 'Sua produtividade em um só lugar.'
 };
 

@@ -158,7 +158,7 @@ const PublicSharePage: React.FC<PublicSharePageProps> = ({ token }) => {
       </main>
 
       <footer className="h-12 border-t flex items-center justify-center gap-4 bg-slate-50 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-        <span>Criado com Kanban & Pages Pro</span>
+        <span>Criado com Forge</span>
         <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
         <a href="/login" className="hover:text-blue-600 transition-colors">Criar sua conta</a>
       </footer>
