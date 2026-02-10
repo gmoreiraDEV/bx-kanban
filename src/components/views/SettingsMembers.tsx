@@ -11,17 +11,32 @@ const SettingsMembersPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
   const [isSubmittingInvite, setIsSubmittingInvite] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
 
   if (!currentSpace) return null;
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
+
+    setInviteError(null);
+    setInviteSuccess(null);
     setIsSubmittingInvite(true);
-    await stackAuth.inviteMember(email);
-    setIsSubmittingInvite(false);
-    setEmail('');
-    setIsInviting(false);
+    try {
+      await stackAuth.inviteMember(email);
+      setInviteSuccess(`Convite enviado para ${email}.`);
+      setEmail('');
+      setIsInviting(false);
+    } catch (error) {
+      setInviteError(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível enviar o convite.'
+      );
+    } finally {
+      setIsSubmittingInvite(false);
+    }
   };
 
   return (
@@ -32,7 +47,11 @@ const SettingsMembersPage: React.FC = () => {
           <p className="text-slate-500 font-medium mt-1">Gerencie os membros e convites do espaço <span className="text-blue-600">"{currentSpace.name}"</span>.</p>
         </div>
         <button 
-          onClick={() => setIsInviting(true)}
+          onClick={() => {
+            setIsInviting(true);
+            setInviteError(null);
+            setInviteSuccess(null);
+          }}
           className="bg-blue-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2"
         >
           <UserPlus className="w-5 h-5" /> Convidar Membro
@@ -43,7 +62,14 @@ const SettingsMembersPage: React.FC = () => {
         <div className="mb-10 bg-white p-8 rounded-3xl border-2 border-blue-500 shadow-xl shadow-blue-50/50">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-slate-800">Enviar Convite</h3>
-            <button onClick={() => setIsInviting(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            <button
+              onClick={() => {
+                setIsInviting(false);
+                setInviteError(null);
+              }}
+            >
+              <X className="w-5 h-5 text-slate-400" />
+            </button>
           </div>
           <form onSubmit={handleInvite} className="flex gap-3">
             <div className="relative flex-1">
@@ -65,7 +91,16 @@ const SettingsMembersPage: React.FC = () => {
               {isSubmittingInvite ? 'Convidando...' : 'Convidar'}
             </button>
           </form>
+          {inviteError && (
+            <p className="text-sm text-red-600 mt-3">{inviteError}</p>
+          )}
           <p className="text-[11px] text-slate-400 mt-4 font-bold uppercase tracking-wider">O convidado receberá um e-mail com o link de ativação.</p>
+        </div>
+      )}
+
+      {!isInviting && inviteSuccess && (
+        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {inviteSuccess}
         </div>
       )}
 

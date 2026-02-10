@@ -178,9 +178,13 @@ class StackAuthClient {
 
   async inviteMember(email: string) {
     const currentSpace = this.getCurrentSpaceSnapshot();
-    if (!currentSpace) return;
+    if (!currentSpace || !this.user) return;
 
-    const members = await spacesApi.inviteMember(currentSpace.id, { email });
+    const members = await spacesApi.inviteMember(currentSpace.id, {
+      email,
+      inviterName: this.user.name,
+      inviterEmail: this.user.email,
+    });
 
     const updatedSpaces = this.spaces.map(space =>
       space.id === currentSpace.id ? { ...space, members } : space

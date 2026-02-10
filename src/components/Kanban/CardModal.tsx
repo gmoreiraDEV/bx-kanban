@@ -6,6 +6,7 @@ import { MessageSquare, Save, Trash2, X } from 'lucide-react';
 import { kanbanApi } from '@/lib/kanbanApi';
 import { stackAuth } from '@/lib/stack-auth';
 import { Card as CardType, CardComment } from '@/types';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 interface CardModalProps {
   card: CardType;
@@ -25,6 +26,7 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCommenting, setIsCommenting] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const canSubmitComment = useMemo(() => commentContent.trim().length > 0, [commentContent]);
 
@@ -46,12 +48,12 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
 
   useEffect(() => {
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape' && !isDeleteConfirmOpen) onClose();
     };
 
     window.addEventListener('keydown', onEscape);
     return () => window.removeEventListener('keydown', onEscape);
-  }, [onClose]);
+  }, [onClose, isDeleteConfirmOpen]);
 
   const handleSave = async () => {
     const trimmedTitle = title.trim();
@@ -72,12 +74,11 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Deseja realmente excluir este card?')) return;
-
     setIsDeleting(true);
     try {
       await kanbanApi.deleteCard(card.id);
       await onRefresh();
+      setIsDeleteConfirmOpen(false);
       onClose();
     } finally {
       setIsDeleting(false);
@@ -191,15 +192,26 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
             {isSaving ? 'Salvando...' : 'Salvar'}
           </button>
           <button
-            onClick={handleDelete}
+            onClick={() => setIsDeleteConfirmOpen(true)}
             disabled={isDeleting}
             className="inline-flex items-center gap-2 bg-red-50 text-red-700 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-red-100 disabled:opacity-60"
           >
             <Trash2 className="w-4 h-4" />
-            {isDeleting ? 'Excluindo...' : 'Excluir card'}
+            Excluir card
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={isDeleteConfirmOpen}
+        title="Excluir card"
+        description="Deseja realmente excluir este card?"
+        confirmLabel={isDeleting ? 'Excluindo...' : 'Excluir card'}
+        tone="danger"
+        isConfirming={isDeleting}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 };

@@ -14,18 +14,32 @@ import {
   Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import TextInputModal from '@/components/ui/TextInputModal';
 
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const currentSpace = stackAuth.useCurrentSpace();
   const spaces = stackAuth.useSpaces();
   const [isSpaceSelectorOpen, setIsSpaceSelectorOpen] = useState(false);
+  const [isCreateSpaceModalOpen, setIsCreateSpaceModalOpen] = useState(false);
+  const [isCreatingSpace, setIsCreatingSpace] = useState(false);
 
   const navItems = [
     { label: 'Boards', path: '/boards', icon: Trello },
     { label: 'Pages', path: '/pages', icon: FileText },
     { label: 'Membros', path: '/settings/members', icon: Users },
   ];
+
+  const handleCreateSpace = async (name: string) => {
+    setIsCreatingSpace(true);
+    try {
+      await stackAuth.createSpace(name);
+      setIsCreateSpaceModalOpen(false);
+      setIsSpaceSelectorOpen(false);
+    } finally {
+      setIsCreatingSpace(false);
+    }
+  };
 
   return (
     <aside className="w-64 border-r bg-slate-900 text-slate-300 flex flex-col flex-shrink-0">
@@ -70,10 +84,7 @@ const Sidebar: React.FC = () => {
               ))}
               <div className="h-px bg-slate-700 my-2"></div>
               <button 
-                onClick={() => {
-                  const name = prompt('Nome do novo espaço:');
-                  if (name) void stackAuth.createSpace(name);
-                }}
+                onClick={() => setIsCreateSpaceModalOpen(true)}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-400 hover:bg-slate-700 transition-colors"
               >
                 <Plus className="w-4 h-4" /> Novo Espaço
@@ -104,18 +115,17 @@ const Sidebar: React.FC = () => {
         </nav>
       </div>
 
-      <div className="mt-auto p-6">
-        <div className="bg-slate-800 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold text-slate-500 uppercase">Espaço Livre</span>
-            <span className="text-[10px] font-bold text-blue-400">Pro</span>
-          </div>
-          <div className="w-full bg-slate-700 h-1 rounded-full overflow-hidden">
-            <div className="w-2/3 bg-blue-500 h-full"></div>
-          </div>
-          <p className="text-[10px] mt-2 text-slate-500 leading-tight">Você está usando 80% do armazenamento do espaço.</p>
-        </div>
-      </div>
+      <TextInputModal
+        isOpen={isCreateSpaceModalOpen}
+        title="Novo espaço"
+        description="Crie um novo espaço de trabalho."
+        label="Nome do espaço"
+        placeholder="Ex: Produto"
+        submitLabel="Criar espaço"
+        isSubmitting={isCreatingSpace}
+        onClose={() => setIsCreateSpaceModalOpen(false)}
+        onSubmit={handleCreateSpace}
+      />
     </aside>
   );
 };

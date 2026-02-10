@@ -24,16 +24,20 @@ import { kanbanApi } from "@/lib/kanbanApi";
 import { Column as ColumnType, Card as CardType } from "@/types";
 import Column from "./Column";
 import { Plus, Settings2 } from "lucide-react";
+import TextInputModal from "@/components/ui/TextInputModal";
 
 interface BoardProps {
   boardId: string;
+  boardTitle?: string;
 }
 
-const Board: React.FC<BoardProps> = ({ boardId }) => {
+const Board: React.FC<BoardProps> = ({ boardId, boardTitle }) => {
   const currentSpace = stackAuth.useCurrentSpace();
   const [columns, setColumns] = useState<ColumnType[]>([]);
   const [cards, setCards] = useState<CardType[]>([]);
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
+  const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
+  const [isAddingColumn, setIsAddingColumn] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -129,16 +133,21 @@ const Board: React.FC<BoardProps> = ({ boardId }) => {
     setActiveCard(null);
   };
 
-  const addColumn = async () => {
-    const title = prompt("Nome da coluna:");
-    if (title && currentSpace) {
+  const addColumn = async (title: string) => {
+    if (!currentSpace || isAddingColumn) return;
+
+    setIsAddingColumn(true);
+    try {
       await kanbanApi.createColumn({
         tenantId: currentSpace.id,
         boardId,
         title,
         position: columns.length,
       });
+      setIsAddColumnModalOpen(false);
       await loadData();
+    } finally {
+      setIsAddingColumn(false);
     }
   };
 
@@ -147,7 +156,7 @@ const Board: React.FC<BoardProps> = ({ boardId }) => {
       <div className="flex items-center justify-between mb-6 flex-shrink-0">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-slate-800">
-            Board do Projeto
+            {boardTitle ?? "Board do Projeto"}
           </h1>
           <div className="flex -space-x-2">
             {[1, 2, 3].map((i) => (
@@ -165,7 +174,7 @@ const Board: React.FC<BoardProps> = ({ boardId }) => {
             <Settings2 className="w-4 h-4" /> Filtros
           </button>
           <button
-            onClick={addColumn}
+            onClick={() => setIsAddColumnModalOpen(true)}
             className="flex items-center gap-2 px-4 py-1.5 text-sm bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus className="w-4 h-4" /> Coluna
@@ -196,7 +205,7 @@ const Board: React.FC<BoardProps> = ({ boardId }) => {
           </SortableContext>
 
           <button
-            onClick={addColumn}
+            onClick={() => setIsAddColumnModalOpen(true)}
             className="w-80 flex-shrink-0 h-16 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center gap-2 text-slate-400 hover:border-slate-300 hover:text-slate-500 transition-all hover:bg-slate-100/50"
           >
             <Plus className="w-5 h-5" /> Adicionar Coluna
@@ -228,6 +237,18 @@ const Board: React.FC<BoardProps> = ({ boardId }) => {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      <TextInputModal
+        isOpen={isAddColumnModalOpen}
+        title="Nova coluna"
+        description="Defina o nome da coluna para este board."
+        label="Nome da coluna"
+        placeholder="Ex: Em revisão"
+        submitLabel="Criar coluna"
+        isSubmitting={isAddingColumn}
+        onClose={() => setIsAddColumnModalOpen(false)}
+        onSubmit={addColumn}
+      />
     </div>
   );
 };

@@ -20,7 +20,31 @@ const ShareModal: React.FC<ShareModalProps> = ({ pageId, onClose }) => {
   const [expiration, setExpiration] = useState<'1h' | '24h' | '7d'>('24h');
   const [tokens, setTokens] = useState<PageInviteToken[]>([]);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState<string | null>(null);
   const [isLoadingTokens, setIsLoadingTokens] = useState(false);
+
+  const copyWithFallback = async (value: string) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textarea);
+
+    if (!successful) {
+      throw new Error('Não foi possível copiar automaticamente.');
+    }
+  };
 
   const loadTokens = async () => {
     if (!currentSpace) return;
@@ -56,11 +80,17 @@ const ShareModal: React.FC<ShareModalProps> = ({ pageId, onClose }) => {
     await loadTokens();
   };
 
-  const copyToClipboard = (token: string) => {
+  const copyToClipboard = async (token: string) => {
     const url = `${window.location.origin}/share/page/${token}`;
-    navigator.clipboard.writeText(url);
-    setCopiedToken(token);
-    setTimeout(() => setCopiedToken(null), 2000);
+    setCopyError(null);
+
+    try {
+      await copyWithFallback(url);
+      setCopiedToken(token);
+      setTimeout(() => setCopiedToken(null), 2000);
+    } catch {
+      setCopyError('Não foi possível copiar o link. Copie manualmente o URL do navegador.');
+    }
   };
 
   const revokeToken = async (id: string) => {
@@ -140,8 +170,9 @@ const ShareModal: React.FC<ShareModalProps> = ({ pageId, onClose }) => {
                   </div>
                   <div className="flex items-center gap-1">
                     <button 
-                      onClick={() => copyToClipboard(token.token)}
+                      onClick={() => void copyToClipboard(token.token)}
                       className="p-2 hover:bg-white rounded-lg transition-colors text-slate-400 hover:text-blue-600"
+                      title="Copiar link"
                     >
                       {copiedToken === token.token ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                     </button>
@@ -154,6 +185,9 @@ const ShareModal: React.FC<ShareModalProps> = ({ pageId, onClose }) => {
                   </div>
                 </div>
               ))}
+              {copyError && (
+                <p className="text-sm text-red-600">{copyError}</p>
+              )}
               {!isLoadingTokens && tokens.length === 0 && (
                 <p className="text-center py-6 text-sm text-slate-400">Nenhum link ativo encontrado.</p>
               )}

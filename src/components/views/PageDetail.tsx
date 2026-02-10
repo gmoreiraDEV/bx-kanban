@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Share2, ArrowLeft, Save, Trash2, Eye, Edit3 } from 'lucide-react';
 
 import ShareModal from '@/components/Pages/ShareModal';
+import MarkdownRenderer from '@/components/Pages/MarkdownRenderer';
+import RichTextEditor from '@/components/Pages/RichTextEditor';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import { stackAuth } from '@/lib/stack-auth';
 import { pagesApi } from '@/lib/pagesApi';
 import { Page } from '@/types';
@@ -19,10 +22,14 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
   const [page, setPage] = useState<Page | null>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
+  const [editorMode, setEditorMode] = useState<'rich' | 'markdown'>('rich');
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isSavedModalOpen, setIsSavedModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!pageId || !currentSpace) return;
@@ -34,6 +41,7 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
         setPage(loaded);
         setContent(loaded.content);
         setTitle(loaded.title);
+        setEditorMode('rich');
       } catch {
         router.push('/pages');
       } finally {
@@ -55,17 +63,23 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
         content,
       });
       setPage(updated);
-      alert('Página salva com sucesso!');
+      setIsSavedModalOpen(true);
     } finally {
       setIsSaving(false);
     }
   };
 
   const deletePage = async () => {
-    if (!page || !currentSpace || !confirm('Excluir esta página?')) return;
+    if (!page || !currentSpace || isDeleting) return;
 
-    await pagesApi.deletePage(page.id, currentSpace.id);
-    router.push('/pages');
+    setIsDeleting(true);
+    try {
+      await pagesApi.deletePage(page.id, currentSpace.id);
+      setIsDeleteModalOpen(false);
+      router.push('/pages');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (isLoading) {
@@ -108,7 +122,7 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
             <Save className="w-4 h-4" /> {isSaving ? 'Salvando...' : 'Salvar'}
           </button>
           <button
-            onClick={deletePage}
+            onClick={() => setIsDeleteModalOpen(true)}
             className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition-colors"
           >
             <Trash2 className="w-4 h-4" />
@@ -119,18 +133,53 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
       <div className="flex-1 overflow-auto p-8 md:p-12">
         <div className="max-w-4xl mx-auto min-h-full">
           {isEditing ? (
-            <textarea
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              className="w-full h-full min-h-[500px] outline-none border-none p-0 focus:ring-0 text-slate-700 font-mono leading-relaxed resize-none"
-              placeholder="Digite aqui em markdown..."
-            />
-          ) : (
-            <div className="prose prose-slate max-w-none">
-              <h1 className="text-4xl font-black text-slate-900 mb-8">{title}</h1>
-              <div className="whitespace-pre-wrap text-slate-600 leading-loose">
-                {content}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-slate-50 w-fit">
+                <button
+                  type="button"
+                  onClick={() => setEditorMode('rich')}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    editorMode === 'rich'
+                      ? 'bg-white text-slate-800 shadow-sm font-semibold'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Rich Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditorMode('markdown')}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    editorMode === 'markdown'
+                      ? 'bg-white text-slate-800 shadow-sm font-semibold'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Markdown
+                </button>
               </div>
+
+              {editorMode === 'rich' ? (
+                <RichTextEditor
+                  key={page.id}
+                  value={content}
+                  onChange={setContent}
+                  placeholder="Comece a escrever..."
+                  minHeightClassName="min-h-[560px]"
+                />
+              ) : (
+                <textarea
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  className="w-full h-full min-h-[560px] border border-slate-200 rounded-xl p-4 outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-mono leading-relaxed resize-none"
+                  placeholder="Digite aqui em markdown..."
+                />
+              )}
+            </div>
+          ) : (
+            <div className="max-w-none">
+              <h1 className="text-4xl font-black text-slate-900 mb-8">{title}</h1>
+              <MarkdownRenderer content={content} />
             </div>
           )}
         </div>
@@ -139,6 +188,26 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
       {isSharing && pageId && (
         <ShareModal pageId={pageId} onClose={() => setIsSharing(false)} />
       )}
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        title="Excluir página"
+        description="Deseja realmente excluir esta página?"
+        confirmLabel="Excluir página"
+        tone="danger"
+        isConfirming={isDeleting}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={deletePage}
+      />
+      <ConfirmModal
+        isOpen={isSavedModalOpen}
+        title="Página salva"
+        description="As alterações foram salvas com sucesso."
+        confirmLabel="OK"
+        hideCancel
+        onClose={() => setIsSavedModalOpen(false)}
+        onConfirm={() => setIsSavedModalOpen(false)}
+      />
     </div>
   );
 };

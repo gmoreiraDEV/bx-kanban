@@ -19,7 +19,15 @@ export const spacesApi = {
     }),
   getMembers: (spaceId: string) =>
     apiFetch<SpaceMember[]>(`/api/spaces/${spaceId}/members`),
-  inviteMember: (spaceId: string, data: { email: string; role?: 'owner' | 'admin' | 'member' }) =>
+  inviteMember: (
+    spaceId: string,
+    data: {
+      email: string;
+      role?: 'owner' | 'admin' | 'member';
+      inviterName?: string;
+      inviterEmail?: string;
+    }
+  ) =>
     apiFetch<SpaceMember[]>(`/api/spaces/${spaceId}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

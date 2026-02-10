@@ -10,6 +10,16 @@ export const kanbanApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
+  updateBoard: (id: string, data: { tenantId: string; title: string }) =>
+    apiFetch<Board>(`/api/kanban/boards/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  deleteBoard: (id: string, tenantId: string) =>
+    apiFetch<null>(`/api/kanban/boards/${id}?tenantId=${tenantId}`, {
+      method: 'DELETE',
+    }),
   getColumns: (boardId: string) =>
     apiFetch<Column[]>(`/api/kanban/columns?boardId=${boardId}`),
   createColumn: (data: { tenantId: string; boardId: string; title: string; position: number }) =>

@@ -9,7 +9,9 @@ import { ptBR } from 'date-fns/locale';
 
 import { stackAuth } from '@/lib/stack-auth';
 import { pagesApi } from '@/lib/pagesApi';
+import { markdownToPlainText } from '@/lib/markdown';
 import { Page } from '@/types';
+import TextInputModal from '@/components/ui/TextInputModal';
 
 const PagesListPage: React.FC = () => {
   const router = useRouter();
@@ -17,6 +19,8 @@ const PagesListPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [pages, setPages] = useState<Page[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreatingPage, setIsCreatingPage] = useState(false);
 
   useEffect(() => {
     if (!currentSpace) return;
@@ -41,18 +45,21 @@ const PagesListPage: React.FC = () => {
 
   if (!currentSpace) return null;
 
-  const createPage = async () => {
-    const title = prompt('Título da página:');
-    if (!title) return;
+  const createPage = async (title: string) => {
+    setIsCreatingPage(true);
+    try {
+      const page = await pagesApi.createPage({
+        tenantId: currentSpace.id,
+        title,
+        content: '# ' + title + '\n\nComece a escrever...',
+      });
 
-    const page = await pagesApi.createPage({
-      tenantId: currentSpace.id,
-      title,
-      content: '# ' + title + '\n\nComece a escrever...',
-    });
-
-    setPages(prev => [page, ...prev]);
-    router.push(`/pages/${page.id}`);
+      setPages(prev => [page, ...prev]);
+      setIsCreateModalOpen(false);
+      router.push(`/pages/${page.id}`);
+    } finally {
+      setIsCreatingPage(false);
+    }
   };
 
   return (
@@ -63,7 +70,7 @@ const PagesListPage: React.FC = () => {
           <p className="text-slate-500 font-medium">Documentos, notas e bases de conhecimento.</p>
         </div>
         <button
-          onClick={createPage}
+          onClick={() => setIsCreateModalOpen(true)}
           className="bg-blue-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2"
         >
           <Plus className="w-5 h-5" /> Nova Página
@@ -101,7 +108,7 @@ const PagesListPage: React.FC = () => {
               </div>
               <h3 className="text-lg font-bold text-slate-800 mb-2 truncate">{page.title}</h3>
               <p className="text-sm text-slate-500 line-clamp-2 mb-6 leading-relaxed">
-                {page.content.replace(/[#*`]/g, '').substring(0, 100)}...
+                {markdownToPlainText(page.content).substring(0, 100)}...
               </p>
               <div className="flex items-center justify-between mt-auto">
                 <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
@@ -127,6 +134,18 @@ const PagesListPage: React.FC = () => {
           )}
         </div>
       )}
+
+      <TextInputModal
+        isOpen={isCreateModalOpen}
+        title="Nova página"
+        description="Defina o título inicial da página."
+        label="Título"
+        placeholder="Ex: Reunião semanal"
+        submitLabel="Criar página"
+        isSubmitting={isCreatingPage}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={createPage}
+      />
     </div>
   );
 };

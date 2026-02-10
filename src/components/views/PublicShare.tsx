@@ -6,6 +6,8 @@ import { Globe, Clock, ShieldAlert, Save } from 'lucide-react';
 import { Page, PageInviteToken } from '@/types';
 import { cn } from '@/lib/utils';
 import { pagesApi } from '@/lib/pagesApi';
+import MarkdownRenderer from '@/components/Pages/MarkdownRenderer';
+import RichTextEditor from '@/components/Pages/RichTextEditor';
 
 interface PublicSharePageProps {
   token?: string;
@@ -17,6 +19,7 @@ const PublicSharePage: React.FC<PublicSharePageProps> = ({ token }) => {
   const [error, setError] = useState(false);
   const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [editorMode, setEditorMode] = useState<'rich' | 'markdown'>('rich');
 
   useEffect(() => {
     if (!token) return;
@@ -27,6 +30,7 @@ const PublicSharePage: React.FC<PublicSharePageProps> = ({ token }) => {
         setInvite(payload.invite);
         setPage(payload.page);
         setContent(payload.page.content);
+        setEditorMode('rich');
       } catch {
         setError(true);
       }
@@ -101,18 +105,53 @@ const PublicSharePage: React.FC<PublicSharePageProps> = ({ token }) => {
       <main className="flex-1 p-6 md:p-12">
         <div className="max-w-4xl mx-auto">
           {invite.permission === 'edit' ? (
-            <textarea
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              className="w-full h-full min-h-[600px] border-none outline-none focus:ring-0 text-slate-700 font-mono leading-relaxed resize-none text-lg"
-              placeholder="Comece a editar..."
-            />
-          ) : (
-            <div className="prose prose-slate max-w-none">
-              <h1 className="text-4xl font-black text-slate-900 mb-8">{page.title}</h1>
-              <div className="whitespace-pre-wrap text-slate-700 text-lg leading-loose font-medium">
-                {content}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-slate-50 w-fit">
+                <button
+                  type="button"
+                  onClick={() => setEditorMode('rich')}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    editorMode === 'rich'
+                      ? 'bg-white text-slate-800 shadow-sm font-semibold'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Rich Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditorMode('markdown')}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    editorMode === 'markdown'
+                      ? 'bg-white text-slate-800 shadow-sm font-semibold'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Markdown
+                </button>
               </div>
+
+              {editorMode === 'rich' ? (
+                <RichTextEditor
+                  key={page.id}
+                  value={content}
+                  onChange={setContent}
+                  placeholder="Comece a editar..."
+                  minHeightClassName="min-h-[600px]"
+                />
+              ) : (
+                <textarea
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  className="w-full h-full min-h-[600px] border border-slate-200 rounded-xl p-4 outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-mono leading-relaxed resize-none text-lg"
+                  placeholder="Comece a editar..."
+                />
+              )}
+            </div>
+          ) : (
+            <div className="max-w-none">
+              <h1 className="text-4xl font-black text-slate-900 mb-8">{page.title}</h1>
+              <MarkdownRenderer content={content} className="text-lg" />
             </div>
           )}
         </div>
