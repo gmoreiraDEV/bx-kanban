@@ -6,7 +6,7 @@ import { tenantMembers, tenants } from '@/db/schema';
 import { mapSpaceMember } from '@/lib/server/mappers';
 import { normalizeEmail } from '@/lib/server/identity';
 import { sendSpaceInviteEmail } from '@/lib/server/email';
-import { inviteMemberToSpace } from '@/lib/server/spaces';
+import { inviteMemberToSpace, updateSpaceMemberName } from '@/lib/server/spaces';
 
 interface RouteContext {
   params: Promise<{ spaceId: string }>;
@@ -26,6 +26,7 @@ export const POST = async (request: Request, context: RouteContext) => {
   const { spaceId } = await context.params;
   const body = await request.json();
   const email = body?.email as string | undefined;
+  const name = body?.name as string | undefined;
   const role = body?.role as 'owner' | 'admin' | 'member' | undefined;
   const inviterName = body?.inviterName as string | undefined;
   const inviterEmail = body?.inviterEmail as string | undefined;
@@ -65,6 +66,24 @@ export const POST = async (request: Request, context: RouteContext) => {
     return NextResponse.json({ error: message }, { status: 502 });
   }
 
-  const members = await inviteMemberToSpace({ spaceId, email, role });
+  const members = await inviteMemberToSpace({ spaceId, email, name, role });
+  return NextResponse.json({ data: members.map(mapSpaceMember) });
+};
+
+export const PATCH = async (request: Request, context: RouteContext) => {
+  const { spaceId } = await context.params;
+  const body = await request.json();
+  const userId = body?.userId as string | undefined;
+  const name = body?.name as string | undefined;
+
+  if (!userId || !name?.trim()) {
+    return NextResponse.json({ error: 'userId and name are required.' }, { status: 400 });
+  }
+
+  const members = await updateSpaceMemberName({ spaceId, userId, name: name.trim() });
+  if (!members) {
+    return NextResponse.json({ error: 'Member not found.' }, { status: 404 });
+  }
+
   return NextResponse.json({ data: members.map(mapSpaceMember) });
 };

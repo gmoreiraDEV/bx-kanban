@@ -4,13 +4,14 @@ import { db } from '@/db/drizzle';
 import { tenantMembers, tenants } from '@/db/schema';
 import { Space } from '@/types';
 
-import { normalizeEmail, userIdFromEmail } from './identity';
+import { displayNameFromEmail, normalizeEmail, userIdFromEmail } from './identity';
 import { mapSpace } from './mappers';
 
 type CreateSpaceInput = {
   name: string;
   userId: string;
   userEmail: string;
+  userName?: string;
   teamId?: string;
 };
 
@@ -49,6 +50,7 @@ export const createSpace = async (input: CreateSpaceInput) => {
   const spaceId = `space-${crypto.randomUUID().slice(0, 8)}`;
   const teamId = input.teamId ?? `team-${crypto.randomUUID().slice(0, 8)}`;
   const ownerUserId = input.userId || userIdFromEmail(normalizedEmail);
+  const ownerName = input.userName?.trim() || displayNameFromEmail(normalizedEmail);
 
   await db.transaction(async tx => {
     await tx.insert(tenants).values({
@@ -60,6 +62,7 @@ export const createSpace = async (input: CreateSpaceInput) => {
     await tx.insert(tenantMembers).values({
       tenantId: spaceId,
       userId: ownerUserId,
+      name: ownerName,
       email: normalizedEmail,
       role: 'owner',
     });
@@ -87,6 +90,7 @@ export const bootstrapDefaultSpace = async (input: {
     name: defaultName,
     userId: input.userId,
     userEmail: input.userEmail,
+    userName: input.userName,
   });
 
   return getSpacesForUserEmail(input.userEmail);
@@ -95,10 +99,13 @@ export const bootstrapDefaultSpace = async (input: {
 export const inviteMemberToSpace = async (input: {
   spaceId: string;
   email: string;
+  name?: string;
   role?: 'owner' | 'admin' | 'member';
 }) => {
   const normalizedEmail = normalizeEmail(input.email);
   const userId = userIdFromEmail(normalizedEmail);
+  const preferredName = input.name?.trim();
+  const fallbackName = displayNameFromEmail(normalizedEmail);
   const role = input.role ?? 'member';
 
   const existing = await db
@@ -117,6 +124,7 @@ export const inviteMemberToSpace = async (input: {
       .update(tenantMembers)
       .set({
         role,
+        ...(preferredName ? { name: preferredName } : {}),
         updatedAt: new Date(),
       })
       .where(
@@ -129,10 +137,43 @@ export const inviteMemberToSpace = async (input: {
     await db.insert(tenantMembers).values({
       tenantId: input.spaceId,
       userId,
+      name: preferredName || fallbackName,
       email: normalizedEmail,
       role,
     });
   }
+
+  return db
+    .select()
+    .from(tenantMembers)
+    .where(eq(tenantMembers.tenantId, input.spaceId));
+};
+
+export const updateSpaceMemberName = async (input: {
+  spaceId: string;
+  userId: string;
+  name: string;
+}) => {
+  const nextName = input.name.trim();
+  if (!nextName) {
+    throw new Error('name is required.');
+  }
+
+  const updated = await db
+    .update(tenantMembers)
+    .set({
+      name: nextName,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(tenantMembers.tenantId, input.spaceId),
+        eq(tenantMembers.userId, input.userId)
+      )
+    )
+    .returning({ userId: tenantMembers.userId });
+
+  if (updated.length === 0) return null;
 
   return db
     .select()

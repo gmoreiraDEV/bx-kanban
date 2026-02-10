@@ -169,6 +169,7 @@ class StackAuthClient {
       name,
       userId: this.user.id,
       userEmail: this.user.email,
+      userName: this.user.name,
     });
 
     const merged = [...this.spaces.filter(item => item.id !== space.id), space];
@@ -186,6 +187,18 @@ class StackAuthClient {
       inviterEmail: this.user.email,
     });
 
+    const updatedSpaces = this.spaces.map(space =>
+      space.id === currentSpace.id ? { ...space, members } : space
+    );
+
+    this.setSpaces(updatedSpaces);
+  }
+
+  async updateMemberName(userId: string, name: string) {
+    const currentSpace = this.getCurrentSpaceSnapshot();
+    if (!currentSpace) return;
+
+    const members = await spacesApi.updateMemberName(currentSpace.id, { userId, name });
     const updatedSpaces = this.spaces.map(space =>
       space.id === currentSpace.id ? { ...space, members } : space
     );

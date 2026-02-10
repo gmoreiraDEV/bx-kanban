@@ -18,6 +18,7 @@ export interface Space {
 
 export interface SpaceMember {
   userId: string;
+  name: string;
   email: string;
   role: 'owner' | 'admin' | 'member';
 }

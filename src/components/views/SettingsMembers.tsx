@@ -3,8 +3,10 @@
 
 import React, { useState } from 'react';
 import { stackAuth } from '@/lib/stack-auth';
-import { Users, Mail, UserPlus, Shield, MoreVertical, X } from 'lucide-react';
+import { Users, Mail, UserPlus, Shield, MoreVertical, X, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SpaceMember } from '@/types';
+import TextInputModal from '@/components/ui/TextInputModal';
 
 const SettingsMembersPage: React.FC = () => {
   const currentSpace = stackAuth.useCurrentSpace();
@@ -13,6 +15,9 @@ const SettingsMembersPage: React.FC = () => {
   const [isSubmittingInvite, setIsSubmittingInvite] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [memberToRename, setMemberToRename] = useState<SpaceMember | null>(null);
+  const [isUpdatingMemberName, setIsUpdatingMemberName] = useState(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
 
   if (!currentSpace) return null;
 
@@ -36,6 +41,25 @@ const SettingsMembersPage: React.FC = () => {
       );
     } finally {
       setIsSubmittingInvite(false);
+    }
+  };
+
+  const handleRenameMember = async (name: string) => {
+    if (!memberToRename) return;
+
+    setRenameError(null);
+    setIsUpdatingMemberName(true);
+    try {
+      await stackAuth.updateMemberName(memberToRename.userId, name);
+      setMemberToRename(null);
+    } catch (error) {
+      setRenameError(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível atualizar o nome do membro.'
+      );
+    } finally {
+      setIsUpdatingMemberName(false);
     }
   };
 
@@ -115,10 +139,11 @@ const SettingsMembersPage: React.FC = () => {
             <div key={member.userId} className="p-6 flex items-center justify-between hover:bg-slate-50/30 transition-colors">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center font-bold text-slate-400">
-                  {member.email.charAt(0).toUpperCase()}
+                  {(member.name || member.email).charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-bold text-slate-800">{member.email}</p>
+                  <p className="font-bold text-slate-800">{member.name}</p>
+                  <p className="text-xs text-slate-500">{member.email}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className={cn(
                       "text-[9px] font-black px-2 py-0.5 rounded-full uppercase",
@@ -132,6 +157,16 @@ const SettingsMembersPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setRenameError(null);
+                    setMemberToRename(member);
+                  }}
+                  className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+                  title="Editar nome"
+                >
+                  <Edit3 className="w-5 h-5" />
+                </button>
                 <button className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">
                   <Shield className="w-5 h-5" />
                 </button>
@@ -143,6 +178,26 @@ const SettingsMembersPage: React.FC = () => {
           ))}
         </div>
       </div>
+
+      <TextInputModal
+        isOpen={Boolean(memberToRename)}
+        title="Editar nome do membro"
+        description={memberToRename ? `Atualize o nome de ${memberToRename.email}.` : undefined}
+        label="Nome"
+        submitLabel="Salvar nome"
+        initialValue={memberToRename?.name ?? ''}
+        isSubmitting={isUpdatingMemberName}
+        onClose={() => {
+          setMemberToRename(null);
+          setRenameError(null);
+        }}
+        onSubmit={handleRenameMember}
+      />
+      {renameError && (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {renameError}
+        </div>
+      )}
     </div>
   );
 };

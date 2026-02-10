@@ -1,5 +1,6 @@
 import { Board, Card, CardComment, Column, Page, PageInviteToken, Space, SpaceMember } from '@/types';
 import { boards, cardComments, cards, columns, pageInviteTokens, pages, tenantMembers, tenants } from '@/db/schema';
+import { displayNameFromEmail } from '@/lib/server/identity';
 
 const toIsoString = (value: Date | string | null | undefined) => {
   if (!value) return null;
@@ -76,6 +77,7 @@ export const mapPageInviteToken = (
 
 export const mapSpaceMember = (row: typeof tenantMembers.$inferSelect): SpaceMember => ({
   userId: row.userId,
+  name: row.name?.trim() || displayNameFromEmail(row.email),
   email: row.email,
   role: row.role as 'owner' | 'admin' | 'member',
 });

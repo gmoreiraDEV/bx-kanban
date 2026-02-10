@@ -12,3 +12,11 @@ export const userIdFromEmail = (email: string) => {
   const localPart = normalized.split('@')[0] ?? normalized;
   return `user-${sanitizeIdPart(localPart)}`;
 };
+
+export const displayNameFromEmail = (email: string) => {
+  const normalized = normalizeEmail(email);
+  const localPart = normalized.split('@')[0] ?? normalized;
+  const [firstPart] = localPart.split(/[._-]+/);
+  if (!firstPart) return 'Membro';
+  return firstPart.charAt(0).toUpperCase() + firstPart.slice(1);
+};

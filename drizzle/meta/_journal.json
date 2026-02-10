@@ -22,6 +22,13 @@
       "when": 1770720137399,
       "tag": "0002_flimsy_black_tom",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1770808800000,
+      "tag": "0003_flat_member_names",
+      "breakpoints": true
     }
   ]
 }

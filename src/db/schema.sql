@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS tenants (
 CREATE TABLE IF NOT EXISTS tenant_members (
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL,
+  name TEXT,
   email TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -19,6 +19,7 @@ export const POST = async (request: Request) => {
   const name = body?.name as string | undefined;
   const userId = body?.userId as string | undefined;
   const userEmail = body?.userEmail as string | undefined;
+  const userName = body?.userName as string | undefined;
 
   if (!name || !userEmail) {
     return NextResponse.json({ error: 'name and userEmail are required.' }, { status: 400 });
@@ -28,6 +29,7 @@ export const POST = async (request: Request) => {
     name,
     userId: userId ?? '',
     userEmail,
+    userName,
   });
 
   return NextResponse.json({ data: space }, { status: 201 });

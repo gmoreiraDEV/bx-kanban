@@ -18,6 +18,7 @@ export const tenantMembers = pgTable(
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
     userId: text('user_id').notNull(),
+    name: text('name'),
     email: text('email').notNull(),
     role: text('role').notNull().default('member'),
     createdAt: timestampWithTimezone('created_at'),
