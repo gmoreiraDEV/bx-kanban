@@ -105,56 +105,35 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white border border-slate-200 rounded-2xl shadow-2xl">
-        <div className="h-14 px-5 border-b flex items-center justify-between">
+      <div className="relative w-[60vw] h-[80vh] min-w-[320px] max-w-[96vw] overflow-hidden bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col">
+        <div className="h-14 px-5 border-b flex items-center justify-between flex-shrink-0">
           <h2 className="text-sm font-semibold text-slate-700">Detalhes do Card</h2>
           <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] max-h-[calc(90vh-56px)]">
-          <div className="p-5 overflow-y-auto space-y-5 border-b lg:border-b-0 lg:border-r">
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Título</label>
-              <input
-                value={title}
-                onChange={event => setTitle(event.target.value)}
-                className="mt-2 w-full border rounded-lg px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Descrição</label>
-              <textarea
-                value={description}
-                onChange={event => setDescription(event.target.value)}
-                placeholder="Adicione detalhes, critérios e contexto do card..."
-                className="mt-2 w-full min-h-[220px] border rounded-lg px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="inline-flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60"
-              >
-                <Save className="w-4 h-4" />
-                {isSaving ? 'Salvando...' : 'Salvar'}
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="inline-flex items-center gap-2 bg-red-50 text-red-700 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-red-100 disabled:opacity-60"
-              >
-                <Trash2 className="w-4 h-4" />
-                {isDeleting ? 'Excluindo...' : 'Excluir card'}
-              </button>
-            </div>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-5">
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Título</label>
+            <input
+              value={title}
+              onChange={event => setTitle(event.target.value)}
+              className="mt-2 w-full border rounded-lg px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
 
-          <div className="p-5 overflow-y-auto space-y-4">
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Descrição</label>
+            <textarea
+              value={description}
+              onChange={event => setDescription(event.target.value)}
+              placeholder="Adicione detalhes, critérios e contexto do card..."
+              className="mt-2 w-full min-h-[200px] border rounded-lg px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+            />
+          </div>
+
+          <div className="space-y-4">
             <div className="flex items-center gap-2 text-slate-700">
               <MessageSquare className="w-4 h-4" />
               <h3 className="text-sm font-semibold">Comentários</h3>
@@ -176,7 +155,7 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
               </button>
             </div>
 
-            <div className="space-y-3 max-h-[48vh] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-[30vh] overflow-y-auto overflow-x-hidden pr-1">
               {isLoadingComments && (
                 <p className="text-xs text-slate-400">Carregando comentários...</p>
               )}
@@ -186,18 +165,39 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
               )}
 
               {comments.map(comment => (
-                <div key={comment.id} className="border rounded-xl p-3 bg-slate-50">
+                <div key={comment.id} className="border rounded-xl p-3 bg-slate-50 overflow-hidden">
                   <div className="flex items-center justify-between gap-3 mb-1.5">
                     <p className="text-xs font-semibold text-slate-700">{comment.authorName}</p>
                     <span className="text-[10px] text-slate-400">
                       {new Date(comment.createdAt).toLocaleString()}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
+                  <p className="text-sm text-slate-600 whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed">
+                    {comment.content}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="h-16 px-5 border-t flex items-center justify-end gap-2 flex-shrink-0 bg-white">
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="inline-flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+          >
+            <Save className="w-4 h-4" />
+            {isSaving ? 'Salvando...' : 'Salvar'}
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="inline-flex items-center gap-2 bg-red-50 text-red-700 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-red-100 disabled:opacity-60"
+          >
+            <Trash2 className="w-4 h-4" />
+            {isDeleting ? 'Excluindo...' : 'Excluir card'}
+          </button>
         </div>
       </div>
     </div>
