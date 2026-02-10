@@ -17,11 +17,13 @@ const BoardsPage: React.FC<BoardsPageProps> = ({ boardId }) => {
   const currentSpace = stackAuth.useCurrentSpace();
   const [boards, setBoards] = useState<Board[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  if (!currentSpace) return null;
 
   const loadBoards = useCallback(async () => {
-    if (!currentSpace) return;
+    if (!currentSpace) {
+      setBoards([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     const data = await kanbanApi.getBoards(currentSpace.id);
     setBoards(data);
@@ -38,9 +40,15 @@ const BoardsPage: React.FC<BoardsPageProps> = ({ boardId }) => {
     }
   }, [boardId, boards, isLoading, router]);
 
+  if (!currentSpace) return null;
+
   if (boardId) {
+    if (isLoading) {
+      return <div className="p-10 text-center text-slate-500">Carregando board...</div>;
+    }
+
     const board = boards.find(item => item.id === boardId);
-    if (!isLoading && !board) {
+    if (!board && boards.length > 0) {
       return <div className="p-10 text-center text-slate-500">Board não encontrado ou você não tem acesso.</div>;
     }
     return <KanbanBoard boardId={boardId} />;
@@ -58,6 +66,10 @@ const BoardsPage: React.FC<BoardsPageProps> = ({ boardId }) => {
           const title = prompt('Nome do board:');
           if (title) {
             const created = await kanbanApi.createBoard({ tenantId: currentSpace.id, title });
+            setBoards(prev => {
+              if (prev.some(board => board.id === created.id)) return prev;
+              return [...prev, created];
+            });
             router.push(`/boards/${created.id}`);
           }
         }}

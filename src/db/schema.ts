@@ -1,4 +1,4 @@
-import { integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 const timestampWithTimezone = (name: string) =>
   timestamp(name, { withTimezone: true }).notNull().defaultNow();
@@ -10,6 +10,25 @@ export const tenants = pgTable('tenants', {
   createdAt: timestampWithTimezone('created_at'),
   updatedAt: timestampWithTimezone('updated_at'),
 });
+
+export const tenantMembers = pgTable(
+  'tenant_members',
+  {
+    tenantId: text('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    userId: text('user_id').notNull(),
+    email: text('email').notNull(),
+    role: text('role').notNull().default('member'),
+    createdAt: timestampWithTimezone('created_at'),
+    updatedAt: timestampWithTimezone('updated_at'),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.tenantId, table.userId] }),
+    tenantEmailUniqueIdx: uniqueIndex('tenant_members_tenant_email_idx').on(table.tenantId, table.email),
+    emailIdx: index('tenant_members_email_idx').on(table.email),
+  })
+);
 
 export const boards = pgTable('boards', {
   id: text('id').primaryKey(),
@@ -34,7 +53,10 @@ export const columns = pgTable('columns', {
   position: integer('position').notNull(),
   createdAt: timestampWithTimezone('created_at'),
   updatedAt: timestampWithTimezone('updated_at'),
-});
+},
+table => ({
+  boardPositionIdx: index('columns_board_position_idx').on(table.boardId, table.position),
+}));
 
 export const cards = pgTable('cards', {
   id: text('id').primaryKey(),
@@ -52,7 +74,10 @@ export const cards = pgTable('cards', {
   position: integer('position').notNull(),
   createdAt: timestampWithTimezone('created_at'),
   updatedAt: timestampWithTimezone('updated_at'),
-});
+},
+table => ({
+  columnPositionIdx: index('cards_column_position_idx').on(table.columnId, table.position),
+}));
 
 export const pages = pgTable('pages', {
   id: text('id').primaryKey(),

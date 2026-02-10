@@ -2,11 +2,10 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { db } from '@/db';
 import { stackAuth } from '@/lib/stack-auth';
-import { X, Copy, Check, Clock, Shield, Trash2, Globe } from 'lucide-react';
-// Fix: Added missing 'cn' import from utilities
+import { X, Copy, Check, Clock, Trash2, Globe } from 'lucide-react';
 import { generateToken, cn } from '@/lib/utils';
+import { pagesApi } from '@/lib/pagesApi';
 import { PageInviteToken } from '@/types';
 
 interface ShareModalProps {
@@ -21,16 +20,24 @@ const ShareModal: React.FC<ShareModalProps> = ({ pageId, onClose }) => {
   const [expiration, setExpiration] = useState<'1h' | '24h' | '7d'>('24h');
   const [tokens, setTokens] = useState<PageInviteToken[]>([]);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [isLoadingTokens, setIsLoadingTokens] = useState(false);
 
-  const loadTokens = () => {
-    setTokens(db.getPageTokens(pageId));
+  const loadTokens = async () => {
+    if (!currentSpace) return;
+    setIsLoadingTokens(true);
+    try {
+      const data = await pagesApi.getPageTokens(pageId, currentSpace.id);
+      setTokens(data);
+    } finally {
+      setIsLoadingTokens(false);
+    }
   };
 
   useEffect(() => {
-    loadTokens();
-  }, [pageId]);
+    void loadTokens();
+  }, [pageId, currentSpace?.id]);
 
-  const generateLink = () => {
+  const generateLink = async () => {
     if (!user || !currentSpace) return;
     
     const now = new Date();
@@ -39,15 +46,14 @@ const ShareModal: React.FC<ShareModalProps> = ({ pageId, onClose }) => {
     if (expiration === '24h') expiresAt.setHours(now.getHours() + 24);
     if (expiration === '7d') expiresAt.setDate(now.getDate() + 7);
 
-    db.createToken({
+    await pagesApi.createPageToken(pageId, {
       tenantId: currentSpace.id,
-      pageId,
       token: generateToken(),
       permission,
       expiresAt: expiresAt.toISOString(),
       createdByUserId: user.id
     });
-    loadTokens();
+    await loadTokens();
   };
 
   const copyToClipboard = (token: string) => {
@@ -57,9 +63,9 @@ const ShareModal: React.FC<ShareModalProps> = ({ pageId, onClose }) => {
     setTimeout(() => setCopiedToken(null), 2000);
   };
 
-  const revokeToken = (id: string) => {
-    db.revokeToken(id);
-    loadTokens();
+  const revokeToken = async (id: string) => {
+    await pagesApi.revokePageToken(id);
+    await loadTokens();
   };
 
   return (
@@ -148,8 +154,11 @@ const ShareModal: React.FC<ShareModalProps> = ({ pageId, onClose }) => {
                   </div>
                 </div>
               ))}
-              {tokens.length === 0 && (
+              {!isLoadingTokens && tokens.length === 0 && (
                 <p className="text-center py-6 text-sm text-slate-400">Nenhum link ativo encontrado.</p>
+              )}
+              {isLoadingTokens && (
+                <p className="text-center py-6 text-sm text-slate-400">Carregando links...</p>
               )}
             </div>
           </div>

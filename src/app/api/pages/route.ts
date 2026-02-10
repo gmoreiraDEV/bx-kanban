@@ -2,8 +2,8 @@ import { desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { db } from '@/db/drizzle';
-import { boards, tenants } from '@/db/schema';
-import { mapBoard } from '@/lib/server/mappers';
+import { pages, tenants } from '@/db/schema';
+import { mapPage } from '@/lib/server/mappers';
 
 export const GET = async (request: Request) => {
   const { searchParams } = new URL(request.url);
@@ -15,20 +15,23 @@ export const GET = async (request: Request) => {
 
   const rows = await db
     .select()
-    .from(boards)
-    .where(eq(boards.tenantId, tenantId))
-    .orderBy(desc(boards.updatedAt));
+    .from(pages)
+    .where(eq(pages.tenantId, tenantId))
+    .orderBy(desc(pages.updatedAt));
 
-  return NextResponse.json({ data: rows.map(mapBoard) });
+  return NextResponse.json({ data: rows.map(mapPage) });
 };
 
 export const POST = async (request: Request) => {
   const body = await request.json();
   const tenantId = body?.tenantId as string | undefined;
   const title = body?.title as string | undefined;
+  const content = body?.content as string | undefined;
+  const boardId = (body?.boardId as string | undefined) ?? null;
+  const cardId = (body?.cardId as string | undefined) ?? null;
 
-  if (!tenantId || !title) {
-    return NextResponse.json({ error: 'tenantId and title are required.' }, { status: 400 });
+  if (!tenantId || !title || !content) {
+    return NextResponse.json({ error: 'tenantId, title, and content are required.' }, { status: 400 });
   }
 
   const tenant = await db
@@ -42,16 +45,18 @@ export const POST = async (request: Request) => {
   }
 
   const [created] = await db
-    .insert(boards)
+    .insert(pages)
     .values({
       id: crypto.randomUUID(),
       tenantId,
       title,
-      lastAccessedAt: new Date(),
+      content,
+      boardId,
+      cardId,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
     .returning();
 
-  return NextResponse.json({ data: mapBoard(created) }, { status: 201 });
+  return NextResponse.json({ data: mapPage(created) }, { status: 201 });
 };

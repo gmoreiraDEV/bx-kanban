@@ -10,13 +10,16 @@ const SettingsMembersPage: React.FC = () => {
   const currentSpace = stackAuth.useCurrentSpace();
   const [email, setEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
+  const [isSubmittingInvite, setIsSubmittingInvite] = useState(false);
 
   if (!currentSpace) return null;
 
-  const handleInvite = (e: React.FormEvent) => {
+  const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    stackAuth.inviteMember(email);
+    setIsSubmittingInvite(true);
+    await stackAuth.inviteMember(email);
+    setIsSubmittingInvite(false);
     setEmail('');
     setIsInviting(false);
   };
@@ -56,9 +59,10 @@ const SettingsMembersPage: React.FC = () => {
             </div>
             <button 
               type="submit"
+              disabled={isSubmittingInvite}
               className="bg-slate-900 text-white font-bold px-8 py-3 rounded-xl hover:bg-slate-800 transition-all"
             >
-              Convidar
+              {isSubmittingInvite ? 'Convidando...' : 'Convidar'}
             </button>
           </form>
           <p className="text-[11px] text-slate-400 mt-4 font-bold uppercase tracking-wider">O convidado receberá um e-mail com o link de ativação.</p>

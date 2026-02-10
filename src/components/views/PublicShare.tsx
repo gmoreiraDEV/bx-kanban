@@ -1,11 +1,11 @@
 'use client'
 
+import React, { useEffect, useState } from 'react';
+import { Globe, Clock, ShieldAlert, Save } from 'lucide-react';
 
-import React, { useState, useEffect } from 'react';
-import { db } from '@/db';
 import { Page, PageInviteToken } from '@/types';
-import { Lock, FileText, Globe, Clock, ShieldAlert, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { pagesApi } from '@/lib/pagesApi';
 
 interface PublicSharePageProps {
   token?: string;
@@ -19,30 +19,33 @@ const PublicSharePage: React.FC<PublicSharePageProps> = ({ token }) => {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (token) {
-      const t = db.getToken(token);
-      if (t) {
-        setInvite(t);
-        const p = db.getPage(t.pageId, t.tenantId);
-        if (p) {
-          setPage(p);
-          setContent(p.content);
-        } else {
-          setError(true);
-        }
-      } else {
+    if (!token) return;
+
+    const loadSharedPage = async () => {
+      try {
+        const payload = await pagesApi.getSharedPage(token);
+        setInvite(payload.invite);
+        setPage(payload.page);
+        setContent(payload.page.content);
+      } catch {
         setError(true);
       }
-    }
+    };
+
+    void loadSharedPage();
   }, [token]);
 
-  const handleSave = () => {
-    if (invite && page && invite.permission === 'edit') {
-      setIsSaving(true);
-      setTimeout(() => {
-        db.updatePage(page.id, page.tenantId, { content });
-        setIsSaving(false);
-      }, 500);
+  const handleSave = async () => {
+    if (!invite || !page || invite.permission !== 'edit' || !token) return;
+
+    setIsSaving(true);
+    try {
+      const payload = await pagesApi.updateSharedPage(token, { content });
+      setInvite(payload.invite);
+      setPage(payload.page);
+      setContent(payload.page.content);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -77,13 +80,13 @@ const PublicSharePage: React.FC<PublicSharePageProps> = ({ token }) => {
         </div>
         <div className="flex items-center gap-4">
           <div className={cn(
-            "text-[10px] font-bold px-2 py-1 rounded-full uppercase",
-            invite.permission === 'edit' ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"
+            'text-[10px] font-bold px-2 py-1 rounded-full uppercase',
+            invite.permission === 'edit' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
           )}>
             Modo {invite.permission === 'edit' ? 'Edição' : 'Visualização'}
           </div>
           {invite.permission === 'edit' && (
-            <button 
+            <button
               onClick={handleSave}
               disabled={isSaving}
               className="bg-slate-900 text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200 flex items-center gap-2"
@@ -98,9 +101,9 @@ const PublicSharePage: React.FC<PublicSharePageProps> = ({ token }) => {
       <main className="flex-1 p-6 md:p-12">
         <div className="max-w-4xl mx-auto">
           {invite.permission === 'edit' ? (
-            <textarea 
+            <textarea
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={e => setContent(e.target.value)}
               className="w-full h-full min-h-[600px] border-none outline-none focus:ring-0 text-slate-700 font-mono leading-relaxed resize-none text-lg"
               placeholder="Comece a editar..."
             />

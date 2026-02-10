@@ -1,20 +1,5 @@
 import { Board, Card, Column } from '@/types';
-
-type ApiResponse<T> = {
-  data: T;
-  error?: string;
-};
-
-const apiFetch = async <T>(input: RequestInfo, init?: RequestInit): Promise<T> => {
-  const response = await fetch(input, init);
-  const payload = (await response.json()) as ApiResponse<T>;
-
-  if (!response.ok) {
-    throw new Error(payload.error ?? 'Erro inesperado na API.');
-  }
-
-  return payload.data;
-};
+import { apiFetch } from '@/lib/apiClient';
 
 export const kanbanApi = {
   getBoards: (tenantId: string) =>

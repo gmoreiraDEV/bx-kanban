@@ -1,16 +1,25 @@
+import { and, asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-import { getApiStore, withTimestamps } from '@/lib/apiStore';
-import { Column } from '@/types';
+import { db } from '@/db/drizzle';
+import { boards, columns } from '@/db/schema';
+import { mapColumn } from '@/lib/server/mappers';
 
-export const GET = (request: Request) => {
+export const GET = async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const boardId = searchParams.get('boardId');
-  const store = getApiStore();
 
-  const columns = boardId ? store.columns.filter(column => column.boardId === boardId) : store.columns;
+  if (!boardId) {
+    return NextResponse.json({ error: 'boardId is required.' }, { status: 400 });
+  }
 
-  return NextResponse.json({ data: columns });
+  const rows = await db
+    .select()
+    .from(columns)
+    .where(eq(columns.boardId, boardId))
+    .orderBy(asc(columns.position));
+
+  return NextResponse.json({ data: rows.map(mapColumn) });
 };
 
 export const POST = async (request: Request) => {
@@ -24,19 +33,30 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: 'tenantId, boardId, and title are required.' }, { status: 400 });
   }
 
-  const store = getApiStore();
-  const column: Column = {
-    id: crypto.randomUUID(),
-    tenantId,
-    boardId,
-    title,
-    position,
-    ...withTimestamps(),
-  };
+  const board = await db
+    .select({ id: boards.id })
+    .from(boards)
+    .where(and(eq(boards.id, boardId), eq(boards.tenantId, tenantId)))
+    .limit(1);
 
-  store.columns.push(column);
+  if (board.length === 0) {
+    return NextResponse.json({ error: 'Board not found.' }, { status: 404 });
+  }
 
-  return NextResponse.json({ data: column }, { status: 201 });
+  const [created] = await db
+    .insert(columns)
+    .values({
+      id: crypto.randomUUID(),
+      tenantId,
+      boardId,
+      title,
+      position: Number.isFinite(position) ? position : 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  return NextResponse.json({ data: mapColumn(created) }, { status: 201 });
 };
 
 export const DELETE = async (request: Request) => {
@@ -50,9 +70,7 @@ export const DELETE = async (request: Request) => {
     return NextResponse.json({ error: 'id is required.' }, { status: 400 });
   }
 
-  const store = getApiStore();
-  store.columns = store.columns.filter(column => column.id !== id);
-  store.cards = store.cards.filter(card => card.columnId !== id);
+  await db.delete(columns).where(eq(columns.id, id));
 
   return NextResponse.json({ data: null }, { status: 200 });
 };

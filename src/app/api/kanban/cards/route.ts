@@ -1,16 +1,61 @@
+import { and, asc, eq, ne } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-import { getApiStore, touchUpdatedAt, withTimestamps } from '@/lib/apiStore';
-import { Card } from '@/types';
+import { db } from '@/db/drizzle';
+import { boards, cards, columns } from '@/db/schema';
+import { mapCard } from '@/lib/server/mappers';
 
-export const GET = (request: Request) => {
+const reorderColumn = async (
+  tx: any,
+  columnId: string,
+  movingCardId: string | null,
+  requestedPosition: number | null
+) => {
+  const current = movingCardId
+    ? await tx
+        .select({ id: cards.id })
+        .from(cards)
+        .where(and(eq(cards.columnId, columnId), ne(cards.id, movingCardId)))
+        .orderBy(asc(cards.position))
+    : await tx
+        .select({ id: cards.id })
+        .from(cards)
+        .where(eq(cards.columnId, columnId))
+        .orderBy(asc(cards.position));
+
+  const orderedIds = current.map(card => card.id);
+
+  if (movingCardId) {
+    const nextIndex =
+      requestedPosition === null
+        ? orderedIds.length
+        : Math.max(0, Math.min(requestedPosition, orderedIds.length));
+    orderedIds.splice(nextIndex, 0, movingCardId);
+  }
+
+  for (const [index, id] of orderedIds.entries()) {
+    await tx
+      .update(cards)
+      .set({ position: index, updatedAt: new Date() })
+      .where(eq(cards.id, id));
+  }
+};
+
+export const GET = async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const columnId = searchParams.get('columnId');
-  const store = getApiStore();
 
-  const cards = columnId ? store.cards.filter(card => card.columnId === columnId) : store.cards;
+  if (!columnId) {
+    return NextResponse.json({ error: 'columnId is required.' }, { status: 400 });
+  }
 
-  return NextResponse.json({ data: cards });
+  const rows = await db
+    .select()
+    .from(cards)
+    .where(eq(cards.columnId, columnId))
+    .orderBy(asc(cards.position));
+
+  return NextResponse.json({ data: rows.map(mapCard) });
 };
 
 export const POST = async (request: Request) => {
@@ -26,36 +71,45 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: 'tenantId, boardId, columnId, and title are required.' }, { status: 400 });
   }
 
-  const store = getApiStore();
-  const card: Card = {
-    id: crypto.randomUUID(),
-    tenantId,
-    boardId,
-    columnId,
-    title,
-    description,
-    position,
-    ...withTimestamps(),
-  };
+  const [board, column] = await Promise.all([
+    db
+      .select({ id: boards.id })
+      .from(boards)
+      .where(and(eq(boards.id, boardId), eq(boards.tenantId, tenantId)))
+      .limit(1),
+    db
+      .select({ id: columns.id })
+      .from(columns)
+      .where(and(eq(columns.id, columnId), eq(columns.boardId, boardId), eq(columns.tenantId, tenantId)))
+      .limit(1),
+  ]);
 
-  store.cards.push(card);
-
-  return NextResponse.json({ data: card }, { status: 201 });
-};
-
-const normalizePositions = (cards: Card[], columnId: string, movingCard: Card | null, position: number | null) => {
-  const columnCards = cards
-    .filter(card => card.columnId === columnId && card.id !== movingCard?.id)
-    .sort((a, b) => a.position - b.position);
-
-  if (movingCard) {
-    const targetIndex = position === null ? columnCards.length : Math.max(0, Math.min(position, columnCards.length));
-    columnCards.splice(targetIndex, 0, movingCard);
+  if (board.length === 0 || column.length === 0) {
+    return NextResponse.json({ error: 'Board or column not found.' }, { status: 404 });
   }
 
-  columnCards.forEach((card, index) => {
-    card.position = index;
+  const [created] = await db
+    .insert(cards)
+    .values({
+      id: crypto.randomUUID(),
+      tenantId,
+      boardId,
+      columnId,
+      title,
+      description,
+      position: Number.isFinite(position) ? position : 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  await db.transaction(async tx => {
+    await reorderColumn(tx, columnId, created.id, Number.isFinite(position) ? position : 0);
   });
+
+  const [saved] = await db.select().from(cards).where(eq(cards.id, created.id)).limit(1);
+
+  return NextResponse.json({ data: mapCard(saved) }, { status: 201 });
 };
 
 export const PATCH = async (request: Request) => {
@@ -66,40 +120,47 @@ export const PATCH = async (request: Request) => {
     return NextResponse.json({ error: 'id is required.' }, { status: 400 });
   }
 
-  const store = getApiStore();
-  const index = store.cards.findIndex(card => card.id === id);
-
-  if (index === -1) {
+  const existing = await db.select().from(cards).where(eq(cards.id, id)).limit(1);
+  if (existing.length === 0) {
     return NextResponse.json({ error: 'Card not found.' }, { status: 404 });
   }
 
-  const existing = store.cards[index];
-  const nextColumnId = (body?.columnId as string | undefined) ?? existing.columnId;
+  const current = existing[0];
+  const nextColumnId = (body?.columnId as string | undefined) ?? current.columnId;
   const hasPosition = typeof body?.position === 'number';
-  const nextPosition = hasPosition
+  const requestedPosition = hasPosition
     ? (body.position as number)
-    : nextColumnId === existing.columnId
-      ? existing.position
+    : nextColumnId === current.columnId
+      ? current.position
       : null;
 
-  const updated: Card = {
-    ...existing,
-    title: (body?.title as string | undefined) ?? existing.title,
-    description: (body?.description as string | undefined) ?? existing.description,
-    columnId: nextColumnId,
-    position: nextPosition ?? existing.position,
-    updatedAt: touchUpdatedAt(),
-  };
+  await db.transaction(async tx => {
+    await tx
+      .update(cards)
+      .set({
+        title: (body?.title as string | undefined) ?? current.title,
+        description: (body?.description as string | undefined) ?? current.description,
+        columnId: nextColumnId,
+        position: current.position,
+        updatedAt: new Date(),
+      })
+      .where(eq(cards.id, id));
 
-  store.cards[index] = updated;
+    const shouldReorder = current.columnId !== nextColumnId || hasPosition;
+    if (shouldReorder) {
+      await reorderColumn(
+        tx,
+        nextColumnId,
+        id,
+        requestedPosition === null ? null : Number.isFinite(requestedPosition) ? requestedPosition : 0
+      );
 
-  if (existing.columnId !== nextColumnId || hasPosition) {
-    normalizePositions(store.cards, nextColumnId, updated, nextPosition);
-
-    if (existing.columnId !== nextColumnId) {
-      normalizePositions(store.cards, existing.columnId, null, null);
+      if (current.columnId !== nextColumnId) {
+        await reorderColumn(tx, current.columnId, null, null);
+      }
     }
-  }
+  });
 
-  return NextResponse.json({ data: updated });
+  const [updated] = await db.select().from(cards).where(eq(cards.id, id)).limit(1);
+  return NextResponse.json({ data: mapCard(updated) });
 };
