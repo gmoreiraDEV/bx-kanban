@@ -1,4 +1,7 @@
 import './globals.css';
+import { StackProvider, StackTheme } from '@stackframe/stack';
+
+import { stackClientApp } from '@/stack/client';
 
 export const metadata = {
   title: 'Forge',
@@ -12,7 +15,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className="bg-slate-50 text-slate-900">{children}</body>
+      <body className="bg-slate-50 text-slate-900">
+        <StackProvider app={stackClientApp}>
+          <StackTheme>{children}</StackTheme>
+        </StackProvider>
+      </body>
     </html>
   );
 }

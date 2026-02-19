@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { stackAuth } from '@/lib/stack-auth';
 import { 
@@ -44,9 +45,15 @@ const Sidebar: React.FC = () => {
   return (
     <aside className="w-64 border-r bg-slate-900 text-slate-300 flex flex-col flex-shrink-0">
       <div className="p-6">
-        <div className="flex items-center gap-2 mb-8">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">K</div>
-          <span className="font-bold text-white text-lg tracking-tight">Forge</span>
+        <div className="mb-8">
+          <Image
+            src="/img/logo-h.png"
+            alt="Forge"
+            width={540}
+            height={120}
+            className="h-8 w-auto"
+            priority
+          />
         </div>
 
         {/* Space Switcher */}

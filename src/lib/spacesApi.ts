@@ -3,8 +3,8 @@ import { Space, SpaceMember } from '@/types';
 import { apiFetch } from '@/lib/apiClient';
 
 export const spacesApi = {
-  getSpaces: (email: string) =>
-    apiFetch<Space[]>(`/api/spaces?email=${encodeURIComponent(email)}`),
+  getSpaces: () =>
+    apiFetch<Space[]>('/api/spaces'),
   createSpace: (data: { name: string; userId: string; userEmail: string; userName?: string }) =>
     apiFetch<Space>('/api/spaces', {
       method: 'POST',

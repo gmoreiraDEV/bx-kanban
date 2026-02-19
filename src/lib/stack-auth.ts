@@ -2,45 +2,50 @@ import { useSyncExternalStore } from 'react';
 
 import { Space, User } from '@/types';
 import { spacesApi } from '@/lib/spacesApi';
-
-type StoredSession = {
-  user: User | null;
-  currentSpaceId: string | null;
-};
+import { stackClientApp } from '@/stack/client';
 
 type Snapshot = {
-  user: User | null;
   spaces: Space[];
   currentSpaceId: string | null;
 };
 
-const STORAGE_KEY = 'stack_auth_session';
+const CURRENT_SPACE_STORAGE_KEY = 'stack_current_space_id';
 
-const userIdFromEmail = (email: string) => {
+const fallbackDisplayNameFromEmail = (email: string) => {
   const localPart = email.split('@')[0] ?? email;
-  const normalized = localPart
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40) || 'user';
+  if (!localPart) return 'User';
+  return localPart.charAt(0).toUpperCase() + localPart.slice(1);
+};
 
-  return `user-${normalized}`;
+const mapStackUserToAppUser = (
+  stackUser:
+    | {
+        id: string;
+        primaryEmail: string | null;
+        displayName: string | null;
+      }
+    | null
+    | undefined
+): User | null => {
+  if (!stackUser?.primaryEmail) return null;
+
+  const email = stackUser.primaryEmail.trim().toLowerCase();
+  if (!email) return null;
+
+  return {
+    id: stackUser.id,
+    email,
+    name: stackUser.displayName?.trim() || fallbackDisplayNameFromEmail(email),
+  };
 };
 
 class StackAuthClient {
-  private user: User | null = null;
   private spaces: Space[] = [];
-  private currentSpaceId: string | null = null;
+  private currentSpaceId: string | null =
+    typeof window === 'undefined' ? null : window.localStorage.getItem(CURRENT_SPACE_STORAGE_KEY);
   private listeners = new Set<() => void>();
 
-  constructor() {
-    if (typeof window !== 'undefined') {
-      this.load();
-    }
-  }
-
   private getSnapshot = (): Snapshot => ({
-    user: this.user,
     spaces: this.spaces,
     currentSpaceId: this.currentSpaceId,
   });
@@ -54,25 +59,13 @@ class StackAuthClient {
     for (const listener of this.listeners) listener();
   }
 
-  private load() {
+  private saveCurrentSpaceId() {
     if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return;
-
-    const data = JSON.parse(saved) as StoredSession;
-    this.user = data.user;
-    this.currentSpaceId = data.currentSpaceId;
-  }
-
-  private save() {
-    if (typeof window === 'undefined') return;
-
-    const payload: StoredSession = {
-      user: this.user,
-      currentSpaceId: this.currentSpaceId,
-    };
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    if (this.currentSpaceId) {
+      window.localStorage.setItem(CURRENT_SPACE_STORAGE_KEY, this.currentSpaceId);
+      return;
+    }
+    window.localStorage.removeItem(CURRENT_SPACE_STORAGE_KEY);
   }
 
   private setSpaces(spaces: Space[]) {
@@ -83,50 +76,58 @@ class StackAuthClient {
       this.currentSpaceId = spaces[0]?.id ?? null;
     }
 
-    this.save();
+    this.saveCurrentSpaceId();
     this.emit();
+  }
+
+  private clearSpaces() {
+    this.spaces = [];
+    this.currentSpaceId = null;
+    this.saveCurrentSpaceId();
+    this.emit();
+  }
+
+  private async getCurrentUser() {
+    try {
+      const stackUser = await stackClientApp.getUser();
+      return mapStackUserToAppUser(stackUser);
+    } catch {
+      return null;
+    }
   }
 
   private getCurrentSpaceSnapshot() {
     return this.spaces.find(space => space.id === this.currentSpaceId) ?? this.spaces[0] ?? null;
   }
 
-  login(email: string) {
-    const normalizedEmail = email.trim().toLowerCase();
-    const localPart = normalizedEmail.split('@')[0] ?? normalizedEmail;
-
-    this.user = {
-      id: userIdFromEmail(normalizedEmail),
-      email: normalizedEmail,
-      name: localPart.charAt(0).toUpperCase() + localPart.slice(1),
-    };
-
-    this.save();
-    this.emit();
+  login(_email: string) {
+    if (typeof window === 'undefined') return;
+    window.location.assign('/handler/sign-in');
   }
 
-  logout() {
-    this.user = null;
-    this.spaces = [];
-    this.currentSpaceId = null;
+  async logout() {
+    this.clearSpaces();
 
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(STORAGE_KEY);
-      this.emit();
-      window.location.assign('/login');
-      return;
+    try {
+      await stackClientApp.signOut({ redirectUrl: '/login' });
+    } catch {
+      if (typeof window !== 'undefined') {
+        window.location.assign('/login');
+      }
     }
-
-    this.emit();
   }
 
   async ensureBootstrap() {
-    if (!this.user) return [];
+    const user = await this.getCurrentUser();
+    if (!user) {
+      this.clearSpaces();
+      return [];
+    }
 
     const spaces = await spacesApi.bootstrap({
-      userId: this.user.id,
-      userEmail: this.user.email,
-      userName: this.user.name,
+      userId: user.id,
+      userEmail: user.email,
+      userName: user.name,
     });
 
     this.setSpaces(spaces);
@@ -134,14 +135,20 @@ class StackAuthClient {
   }
 
   async refreshSpaces() {
-    if (!this.user) return [];
-    const spaces = await spacesApi.getSpaces(this.user.email);
+    const user = await this.getCurrentUser();
+    if (!user) {
+      this.clearSpaces();
+      return [];
+    }
+
+    const spaces = await spacesApi.getSpaces();
     this.setSpaces(spaces);
     return spaces;
   }
 
   useUser() {
-    return useSyncExternalStore(this.subscribe, () => this.getSnapshot().user, () => null);
+    const stackUser = stackClientApp.useUser();
+    return mapStackUserToAppUser(stackUser);
   }
 
   useSpaces() {
@@ -158,18 +165,19 @@ class StackAuthClient {
 
   switchSpace(spaceId: string) {
     this.currentSpaceId = spaceId;
-    this.save();
+    this.saveCurrentSpaceId();
     this.emit();
   }
 
   async createSpace(name: string) {
-    if (!this.user) return;
+    const user = await this.getCurrentUser();
+    if (!user) return;
 
     const space = await spacesApi.createSpace({
       name,
-      userId: this.user.id,
-      userEmail: this.user.email,
-      userName: this.user.name,
+      userId: user.id,
+      userEmail: user.email,
+      userName: user.name,
     });
 
     const merged = [...this.spaces.filter(item => item.id !== space.id), space];
@@ -179,12 +187,13 @@ class StackAuthClient {
 
   async inviteMember(email: string) {
     const currentSpace = this.getCurrentSpaceSnapshot();
-    if (!currentSpace || !this.user) return;
+    const user = await this.getCurrentUser();
+    if (!currentSpace || !user) return;
 
     const members = await spacesApi.inviteMember(currentSpace.id, {
       email,
-      inviterName: this.user.name,
-      inviterEmail: this.user.email,
+      inviterName: user.name,
+      inviterEmail: user.email,
     });
 
     const updatedSpaces = this.spaces.map(space =>

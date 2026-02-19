@@ -7,6 +7,7 @@ import { mapSpaceMember } from '@/lib/server/mappers';
 import { normalizeEmail } from '@/lib/server/identity';
 import { sendSpaceInviteEmail } from '@/lib/server/email';
 import { inviteMemberToSpace, updateSpaceMemberName } from '@/lib/server/spaces';
+import { stackServerApp } from '@/stack/server';
 
 interface RouteContext {
   params: Promise<{ spaceId: string }>;
@@ -24,12 +25,17 @@ export const GET = async (_request: Request, context: RouteContext) => {
 
 export const POST = async (request: Request, context: RouteContext) => {
   const { spaceId } = await context.params;
+  const stackUser = await stackServerApp.getUser({ tokenStore: request });
+  if (!stackUser) {
+    return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+  }
+
   const body = await request.json();
   const email = body?.email as string | undefined;
   const name = body?.name as string | undefined;
   const role = body?.role as 'owner' | 'admin' | 'member' | undefined;
-  const inviterName = body?.inviterName as string | undefined;
-  const inviterEmail = body?.inviterEmail as string | undefined;
+  const inviterName = stackUser.displayName ?? (body?.inviterName as string | undefined);
+  const inviterEmail = stackUser.primaryEmail ?? (body?.inviterEmail as string | undefined);
 
   if (!email) {
     return NextResponse.json({ error: 'email is required.' }, { status: 400 });
