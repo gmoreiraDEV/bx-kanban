@@ -36,6 +36,13 @@
       "when": 1771200000000,
       "tag": "0004_card_assignee_due_date",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771300000000,
+      "tag": "0005_due_date_as_date_only",
+      "breakpoints": true
     }
   ]
 }

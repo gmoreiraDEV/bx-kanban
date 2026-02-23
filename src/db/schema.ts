@@ -1,4 +1,4 @@
-import { index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { date, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 const timestampWithTimezone = (name: string) =>
   timestamp(name, { withTimezone: true }).notNull().defaultNow();
@@ -73,7 +73,7 @@ export const cards = pgTable('cards', {
   title: text('title').notNull(),
   description: text('description').notNull().default(''),
   assignedUserId: text('assigned_user_id'),
-  dueDate: timestamp('due_date', { withTimezone: true }),
+  dueDate: date('due_date'),
   position: integer('position').notNull(),
   createdAt: timestampWithTimezone('created_at'),
   updatedAt: timestampWithTimezone('updated_at'),

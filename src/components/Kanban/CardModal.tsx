@@ -21,7 +21,7 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description ?? '');
   const [assignedUserId, setAssignedUserId] = useState(card.assignedUserId ?? '');
-  const [dueDate, setDueDate] = useState(card.dueDate ? new Date(card.dueDate).toISOString().slice(0, 10) : '');
+  const [dueDate, setDueDate] = useState(card.dueDate ?? '');
   const [comments, setComments] = useState<CardComment[]>([]);
   const [commentContent, setCommentContent] = useState('');
   const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -68,7 +68,7 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
         title: trimmedTitle,
         description,
         assignedUserId: assignedUserId || null,
-        dueDate: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : null,
+        dueDate: dueDate || null,
       });
       await onRefresh();
       onClose();

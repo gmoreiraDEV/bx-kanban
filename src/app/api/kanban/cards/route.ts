@@ -5,6 +5,17 @@ import { db } from '@/db/drizzle';
 import { boards, cards, columns } from '@/db/schema';
 import { mapCard } from '@/lib/server/mappers';
 
+const dueDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+const normalizeDueDate = (value: unknown): string | null | undefined => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!dueDatePattern.test(trimmed)) return null;
+  return trimmed;
+};
+
 const reorderColumn = async (
   tx: any,
   columnId: string,
@@ -66,8 +77,7 @@ export const POST = async (request: Request) => {
   const title = body?.title as string | undefined;
   const description = (body?.description as string | undefined) ?? '';
   const assignedUserId = (body?.assignedUserId as string | null | undefined) ?? null;
-  const dueDateValue = body?.dueDate as string | null | undefined;
-  const dueDate = dueDateValue ? new Date(dueDateValue) : null;
+  const dueDate = normalizeDueDate(body?.dueDate);
   const position = Number(body?.position ?? 0);
 
   if (!tenantId || !boardId || !columnId || !title) {
@@ -101,7 +111,7 @@ export const POST = async (request: Request) => {
       title,
       description,
       assignedUserId,
-      dueDate: dueDate && !Number.isNaN(dueDate.getTime()) ? dueDate : null,
+      dueDate: dueDate ?? null,
       position: Number.isFinite(position) ? position : 0,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -152,12 +162,7 @@ export const PATCH = async (request: Request) => {
         dueDate:
           body?.dueDate === undefined
             ? current.dueDate
-            : (() => {
-                const rawDueDate = body.dueDate as string | null | undefined;
-                if (!rawDueDate) return null;
-                const parsedDueDate = new Date(rawDueDate);
-                return Number.isNaN(parsedDueDate.getTime()) ? null : parsedDueDate;
-              })(),
+            : (normalizeDueDate(body?.dueDate) ?? null),
         columnId: nextColumnId,
         position: current.position,
         updatedAt: new Date(),
