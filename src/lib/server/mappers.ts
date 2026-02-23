@@ -34,7 +34,7 @@ export const mapCard = (row: typeof cards.$inferSelect): Card => ({
   title: row.title,
   description: row.description,
   assignedUserId: row.assignedUserId ?? undefined,
-  dueDate: toIsoString(row.dueDate) ?? undefined,
+  dueDate: row.dueDate ?? undefined,
   position: row.position,
   createdAt: toIsoString(row.createdAt) ?? new Date().toISOString(),
   updatedAt: toIsoString(row.updatedAt) ?? new Date().toISOString(),

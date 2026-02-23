@@ -52,7 +52,7 @@ const Column: React.FC<ColumnProps> = ({ column, cards, onUpdate }) => {
         title: trimmedTitle,
         description: '',
         assignedUserId: newAssignedUserId || null,
-        dueDate: newDueDate ? new Date(`${newDueDate}T12:00:00`).toISOString() : null,
+        dueDate: newDueDate || null,
         position: cards.length,
       });
       setIsAddCardModalOpen(false);

@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS cards (
   title TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
   assigned_user_id TEXT,
-  due_date TIMESTAMPTZ,
+  due_date DATE,
   position INTEGER NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

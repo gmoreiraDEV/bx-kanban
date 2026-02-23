@@ -14,6 +14,26 @@ interface CardModalProps {
   onRefresh: () => Promise<void> | void;
 }
 
+const dueDateInputPattern = /^\d{4}-\d{2}-\d{2}$/;
+
+const toDateInputValue = (value: string | undefined) => {
+  if (!value) return '';
+
+  if (dueDateInputPattern.test(value)) {
+    return value;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+
+  const year = String(parsed.getFullYear());
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
   const user = stackAuth.useUser();
   const currentSpace = stackAuth.useCurrentSpace();
@@ -21,7 +41,7 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description ?? '');
   const [assignedUserId, setAssignedUserId] = useState(card.assignedUserId ?? '');
-  const [dueDate, setDueDate] = useState(card.dueDate ? new Date(card.dueDate).toISOString().slice(0, 10) : '');
+  const [dueDate, setDueDate] = useState(toDateInputValue(card.dueDate));
   const [comments, setComments] = useState<CardComment[]>([]);
   const [commentContent, setCommentContent] = useState('');
   const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -68,7 +88,7 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
         title: trimmedTitle,
         description,
         assignedUserId: assignedUserId || null,
-        dueDate: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : null,
+        dueDate: dueDate || null,
       });
       await onRefresh();
       onClose();

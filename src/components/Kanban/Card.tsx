@@ -16,6 +16,17 @@ interface CardProps {
   onUpdate: () => void;
 }
 
+const formatDueDate = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return value;
+
+  return new Date(year, month - 1, day).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
 const Card: React.FC<CardProps> = ({ card, onUpdate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const currentSpace = stackAuth.useCurrentSpace();
@@ -25,13 +36,7 @@ const Card: React.FC<CardProps> = ({ card, onUpdate }) => {
     [card.assignedUserId, currentSpace?.members]
   );
 
-  const dueDateLabel = card.dueDate
-    ? new Date(card.dueDate).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      })
-    : null;
+  const dueDateLabel = card.dueDate ? formatDueDate(card.dueDate) : null;
 
   const {
     attributes,
