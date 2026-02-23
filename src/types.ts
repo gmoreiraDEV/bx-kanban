@@ -49,6 +49,8 @@ export interface Card {
   columnId: string;
   title: string;
   description: string;
+  assignedUserId?: string;
+  dueDate?: string;
   position: number;
   createdAt: string;
   updatedAt: string;

@@ -65,6 +65,9 @@ export const POST = async (request: Request) => {
   const columnId = body?.columnId as string | undefined;
   const title = body?.title as string | undefined;
   const description = (body?.description as string | undefined) ?? '';
+  const assignedUserId = (body?.assignedUserId as string | null | undefined) ?? null;
+  const dueDateValue = body?.dueDate as string | null | undefined;
+  const dueDate = dueDateValue ? new Date(dueDateValue) : null;
   const position = Number(body?.position ?? 0);
 
   if (!tenantId || !boardId || !columnId || !title) {
@@ -97,6 +100,8 @@ export const POST = async (request: Request) => {
       columnId,
       title,
       description,
+      assignedUserId,
+      dueDate: dueDate && !Number.isNaN(dueDate.getTime()) ? dueDate : null,
       position: Number.isFinite(position) ? position : 0,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -140,6 +145,19 @@ export const PATCH = async (request: Request) => {
       .set({
         title: (body?.title as string | undefined) ?? current.title,
         description: (body?.description as string | undefined) ?? current.description,
+        assignedUserId:
+          body?.assignedUserId === undefined
+            ? current.assignedUserId
+            : ((body.assignedUserId as string | null | undefined) ?? null),
+        dueDate:
+          body?.dueDate === undefined
+            ? current.dueDate
+            : (() => {
+                const rawDueDate = body.dueDate as string | null | undefined;
+                if (!rawDueDate) return null;
+                const parsedDueDate = new Date(rawDueDate);
+                return Number.isNaN(parsedDueDate.getTime()) ? null : parsedDueDate;
+              })(),
         columnId: nextColumnId,
         position: current.position,
         updatedAt: new Date(),

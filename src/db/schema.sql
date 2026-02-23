@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS cards (
   column_id UUID NOT NULL REFERENCES columns(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
+  assigned_user_id TEXT,
+  due_date TIMESTAMPTZ,
   position INTEGER NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
