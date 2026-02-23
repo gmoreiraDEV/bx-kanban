@@ -72,6 +72,8 @@ export const cards = pgTable('cards', {
     .references(() => columns.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description').notNull().default(''),
+  assignedUserId: text('assigned_user_id'),
+  dueDate: timestamp('due_date', { withTimezone: true }),
   position: integer('position').notNull(),
   createdAt: timestampWithTimezone('created_at'),
   updatedAt: timestampWithTimezone('updated_at'),

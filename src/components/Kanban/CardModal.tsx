@@ -20,6 +20,8 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
 
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description ?? '');
+  const [assignedUserId, setAssignedUserId] = useState(card.assignedUserId ?? '');
+  const [dueDate, setDueDate] = useState(card.dueDate ? new Date(card.dueDate).toISOString().slice(0, 10) : '');
   const [comments, setComments] = useState<CardComment[]>([]);
   const [commentContent, setCommentContent] = useState('');
   const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -65,6 +67,8 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
         id: card.id,
         title: trimmedTitle,
         description,
+        assignedUserId: assignedUserId || null,
+        dueDate: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : null,
       });
       await onRefresh();
       onClose();
@@ -132,6 +136,34 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
               placeholder="Adicione detalhes, critérios e contexto do card..."
               className="mt-2 w-full min-h-[200px] border rounded-lg px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 resize-y"
             />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Responsável</label>
+              <select
+                value={assignedUserId}
+                onChange={event => setAssignedUserId(event.target.value)}
+                className="mt-2 w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Sem responsável</option>
+                {(currentSpace?.members ?? []).map(member => (
+                  <option key={member.userId} value={member.userId}>
+                    {member.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Data estimada</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={event => setDueDate(event.target.value)}
+                className="mt-2 w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
 
           <div className="space-y-4">

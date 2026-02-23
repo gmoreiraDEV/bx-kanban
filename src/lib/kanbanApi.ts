@@ -40,6 +40,8 @@ export const kanbanApi = {
     columnId: string;
     title: string;
     description?: string;
+    assignedUserId?: string | null;
+    dueDate?: string | null;
     position: number;
   }) =>
     apiFetch<Card>('/api/kanban/cards', {
@@ -51,6 +53,8 @@ export const kanbanApi = {
     id: string;
     title?: string;
     description?: string;
+    assignedUserId?: string | null;
+    dueDate?: string | null;
     columnId?: string;
     position?: number;
   }) =>
