@@ -197,12 +197,24 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
                     minHeightClassName="min-h-[560px]"
                   />
                 ) : (
-                  <textarea
-                    value={content}
-                    onChange={e => setContent(e.target.value)}
-                    className="w-full h-full min-h-[560px] border border-slate-200 rounded-xl p-4 outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-mono leading-relaxed resize-none"
-                    placeholder="Digite aqui em markdown..."
-                  />
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Markdown</p>
+                      <textarea
+                        value={content}
+                        onChange={e => setContent(e.target.value)}
+                        className="w-full h-full min-h-[560px] border border-slate-200 rounded-xl p-4 outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-mono leading-relaxed resize-none"
+                        placeholder="Digite aqui em markdown..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Preview em tempo real</p>
+                      <div className="min-h-[560px] border border-slate-200 rounded-xl p-4 bg-white">
+                        <MarkdownRenderer content={content} />
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             ) : (
@@ -226,7 +238,10 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
                   <button
                     type="button"
                     key={version.id}
-                    onClick={() => setContent(version.content)}
+                    onClick={() => {
+                      setContent(version.content);
+                      setEditorStateJson(version.editorStateJson || '{}');
+                    }}
                     className="w-full text-left p-2 rounded-md border border-slate-200 bg-white hover:bg-slate-50"
                   >
                     <div className="text-xs text-slate-700 font-medium">
