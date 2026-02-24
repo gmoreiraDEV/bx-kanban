@@ -36,8 +36,10 @@ export const GET = async (request: Request, context: RouteContext) => {
     .limit(20);
 
   return NextResponse.json({
-    data: mapPage(page[0]),
-    versions: versions.map(mapPageVersion),
+    data: {
+      data: mapPage(page[0]),
+      versions: versions.map(mapPageVersion),
+    },
   });
 };
 
