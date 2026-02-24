@@ -1,8 +1,8 @@
-import { and, asc, eq, ne } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { db } from '@/db/drizzle';
-import { boards, cards, columns } from '@/db/schema';
+import { boards, cardDocumentLinks, cards, columns, pages } from '@/db/schema';
 import { mapCard } from '@/lib/server/mappers';
 
 const dueDatePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -14,6 +14,72 @@ const normalizeDueDate = (value: unknown): string | null | undefined => {
   const trimmed = value.trim();
   if (!dueDatePattern.test(trimmed)) return null;
   return trimmed;
+};
+
+
+const loadCardsWithDocumentLinks = async (rows: (typeof cards.$inferSelect)[]) => {
+  if (rows.length === 0) return [];
+
+  const links = await db
+    .select({
+      cardId: cardDocumentLinks.cardId,
+      pageId: pages.id,
+      pageTitle: pages.title,
+    })
+    .from(cardDocumentLinks)
+    .innerJoin(pages, eq(pages.id, cardDocumentLinks.pageId))
+    .where(inArray(cardDocumentLinks.cardId, rows.map(row => row.id)));
+
+  const linksByCard = new Map<string, { pageId: string; pageTitle: string }[]>();
+  for (const link of links) {
+    const current = linksByCard.get(link.cardId) ?? [];
+    current.push({ pageId: link.pageId, pageTitle: link.pageTitle });
+    linksByCard.set(link.cardId, current);
+  }
+
+  return rows.map(row => ({
+    ...mapCard(row),
+    documentLinks: linksByCard.get(row.id) ?? [],
+  }));
+};
+
+const replaceCardDocumentLinks = async (
+  tx: any,
+  cardId: string,
+  tenantId: string,
+  links: unknown
+) => {
+  if (!Array.isArray(links)) return;
+
+  const normalized = links
+    .map(item => ({
+      pageId: typeof item?.pageId === 'string' ? item.pageId.trim() : '',
+    }))
+    .filter(item => item.pageId.length > 0);
+
+  const uniquePageIds = [...new Set(normalized.map(item => item.pageId))];
+
+  const validPages = uniquePageIds.length
+    ? await tx
+        .select({ id: pages.id })
+        .from(pages)
+        .where(and(eq(pages.tenantId, tenantId), inArray(pages.id, uniquePageIds)))
+    : [];
+
+  const validIds = new Set(validPages.map(page => page.id));
+
+  await tx.delete(cardDocumentLinks).where(eq(cardDocumentLinks.cardId, cardId));
+
+  if (validIds.size > 0) {
+    await tx.insert(cardDocumentLinks).values(
+      [...validIds].map(pageId => ({
+        cardId,
+        pageId,
+        tenantId,
+        createdAt: new Date(),
+      }))
+    );
+  }
 };
 
 const reorderColumn = async (
@@ -66,7 +132,7 @@ export const GET = async (request: Request) => {
     .where(eq(cards.columnId, columnId))
     .orderBy(asc(cards.position));
 
-  return NextResponse.json({ data: rows.map(mapCard) });
+  return NextResponse.json({ data: await loadCardsWithDocumentLinks(rows) });
 };
 
 export const POST = async (request: Request) => {
@@ -122,9 +188,16 @@ export const POST = async (request: Request) => {
     await reorderColumn(tx, columnId, created.id, Number.isFinite(position) ? position : 0);
   });
 
-  const [saved] = await db.select().from(cards).where(eq(cards.id, created.id)).limit(1);
+  if (body?.documentLinks !== undefined) {
+    await db.transaction(async tx => {
+      await replaceCardDocumentLinks(tx, created.id, tenantId, body.documentLinks);
+    });
+  }
 
-  return NextResponse.json({ data: mapCard(saved) }, { status: 201 });
+  const [saved] = await db.select().from(cards).where(eq(cards.id, created.id)).limit(1);
+  const [withLinks] = await loadCardsWithDocumentLinks([saved]);
+
+  return NextResponse.json({ data: withLinks }, { status: 201 });
 };
 
 export const PATCH = async (request: Request) => {
@@ -169,6 +242,10 @@ export const PATCH = async (request: Request) => {
       })
       .where(eq(cards.id, id));
 
+    if (body?.documentLinks !== undefined) {
+      await replaceCardDocumentLinks(tx, id, current.tenantId, body.documentLinks);
+    }
+
     const shouldReorder = current.columnId !== nextColumnId || hasPosition;
     if (shouldReorder) {
       await reorderColumn(
@@ -185,7 +262,8 @@ export const PATCH = async (request: Request) => {
   });
 
   const [updated] = await db.select().from(cards).where(eq(cards.id, id)).limit(1);
-  return NextResponse.json({ data: mapCard(updated) });
+  const [withLinks] = await loadCardsWithDocumentLinks([updated]);
+  return NextResponse.json({ data: withLinks });
 };
 
 export const DELETE = async (request: Request) => {

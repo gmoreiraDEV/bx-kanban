@@ -1,12 +1,13 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { MessageSquare, Save, Trash2, X } from 'lucide-react';
+import { FileText, Link2, MessageSquare, Save, Trash2, X } from 'lucide-react';
 
 import { kanbanApi } from '@/lib/kanbanApi';
 import { stackAuth } from '@/lib/stack-auth';
-import { Card as CardType, CardComment } from '@/types';
+import { Card as CardType, CardComment, CardDocumentLink, Page } from '@/types';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import { pagesApi } from '@/lib/pagesApi';
 
 interface CardModalProps {
   card: CardType;
@@ -42,6 +43,11 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
   const [description, setDescription] = useState(card.description ?? '');
   const [assignedUserId, setAssignedUserId] = useState(card.assignedUserId ?? '');
   const [dueDate, setDueDate] = useState(toDateInputValue(card.dueDate));
+  const [documentLinks, setDocumentLinks] = useState<CardDocumentLink[]>(card.documentLinks ?? []);
+  const [showCommandMenu, setShowCommandMenu] = useState(false);
+  const [commandQuery, setCommandQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Page[]>([]);
+  const [isSearchingPages, setIsSearchingPages] = useState(false);
   const [comments, setComments] = useState<CardComment[]>([]);
   const [commentContent, setCommentContent] = useState('');
   const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -69,6 +75,10 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
   }, [card.id, currentSpace?.id]);
 
   useEffect(() => {
+    setDocumentLinks(card.documentLinks ?? []);
+  }, [card.documentLinks]);
+
+  useEffect(() => {
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !isDeleteConfirmOpen) onClose();
     };
@@ -76,6 +86,47 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
     window.addEventListener('keydown', onEscape);
     return () => window.removeEventListener('keydown', onEscape);
   }, [onClose, isDeleteConfirmOpen]);
+
+  const searchPages = async (query: string) => {
+    if (!currentSpace) return;
+
+    setIsSearchingPages(true);
+    try {
+      const pages = await pagesApi.getPagesByTenantAndQuery(currentSpace.id, query);
+      setSearchResults(pages);
+    } finally {
+      setIsSearchingPages(false);
+    }
+  };
+
+  const addDocumentLink = (page: Page) => {
+    setDocumentLinks(prev => {
+      if (prev.some(link => link.pageId === page.id)) return prev;
+      return [...prev, { pageId: page.id, pageTitle: page.title }];
+    });
+    setShowCommandMenu(false);
+    setCommandQuery('');
+  };
+
+  const removeDocumentLink = (pageId: string) => {
+    setDocumentLinks(prev => prev.filter(link => link.pageId !== pageId));
+  };
+
+  const handleDescriptionKeyUp: React.KeyboardEventHandler<HTMLTextAreaElement> = event => {
+    const value = event.currentTarget.value;
+    const triggerIndex = value.lastIndexOf('/');
+
+    if (triggerIndex === -1) {
+      setShowCommandMenu(false);
+      setCommandQuery('');
+      return;
+    }
+
+    const query = value.slice(triggerIndex + 1).trim();
+    setShowCommandMenu(true);
+    setCommandQuery(query);
+    void searchPages(query);
+  };
 
   const handleSave = async () => {
     const trimmedTitle = title.trim();
@@ -89,6 +140,7 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
         description,
         assignedUserId: assignedUserId || null,
         dueDate: dueDate || null,
+        documentLinks,
       });
       await onRefresh();
       onClose();
@@ -150,13 +202,68 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose, onRefresh }) => {
 
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Descrição</label>
-            <textarea
-              value={description}
-              onChange={event => setDescription(event.target.value)}
-              placeholder="Adicione detalhes, critérios e contexto do card..."
-              className="mt-2 w-full min-h-[200px] border rounded-lg px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-            />
+            <div className="relative mt-2">
+              <textarea
+                value={description}
+                onChange={event => setDescription(event.target.value)}
+                onKeyUp={handleDescriptionKeyUp}
+                placeholder="Adicione detalhes, critérios e contexto do card... (digite / para comandos)"
+                className="w-full min-h-[200px] border rounded-lg px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+              />
+
+              {showCommandMenu && (
+                <div className="absolute left-0 top-full mt-2 z-20 w-full rounded-xl border border-slate-200 bg-white shadow-lg p-2">
+                  <p className="text-[11px] font-semibold text-slate-500 px-2 pb-1">Comandos{commandQuery ? `: ${commandQuery}` : ""}</p>
+                  <button
+                    type="button"
+                    className="w-full text-left px-2 py-1.5 rounded-md hover:bg-slate-100 text-xs text-slate-700 flex items-center gap-2"
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                    Incluir link de documento
+                  </button>
+
+                  <div className="mt-2 border-t pt-2 max-h-40 overflow-y-auto">
+                    {isSearchingPages && <p className="text-[11px] text-slate-400 px-2">Buscando documentos...</p>}
+                    {!isSearchingPages && searchResults.length === 0 && (
+                      <p className="text-[11px] text-slate-400 px-2">Nenhum documento encontrado.</p>
+                    )}
+                    {searchResults.map(page => (
+                      <button
+                        key={page.id}
+                        type="button"
+                        onClick={() => addDocumentLink(page)}
+                        className="w-full text-left px-2 py-1.5 rounded-md hover:bg-blue-50 text-xs text-slate-700 flex items-center gap-2"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="truncate">{page.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+
+          {documentLinks.length > 0 && (
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Documentos linkados</label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {documentLinks.map(link => (
+                  <span key={link.pageId} className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-700 text-xs px-2.5 py-1">
+                    <FileText className="w-3 h-3" />
+                    <span>{link.pageTitle}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeDocumentLink(link.pageId)}
+                      className="rounded-full p-0.5 hover:bg-blue-100"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
