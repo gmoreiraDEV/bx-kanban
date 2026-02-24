@@ -1,10 +1,15 @@
-import { Page, PageInviteToken } from '@/types';
+import { Page, PageInviteToken, PageVersion } from '@/types';
 
 import { apiFetch } from '@/lib/apiClient';
 
 type SharedPagePayload = {
   invite: PageInviteToken;
   page: Page;
+};
+
+type PageDetailPayload = {
+  data: Page;
+  versions: PageVersion[];
 };
 
 export const pagesApi = {
@@ -15,6 +20,7 @@ export const pagesApi = {
     tenantId: string;
     title: string;
     content: string;
+    editorStateJson?: string;
     boardId?: string;
     cardId?: string;
   }) =>
@@ -24,13 +30,14 @@ export const pagesApi = {
       body: JSON.stringify(data),
     }),
   getPage: (pageId: string, tenantId: string) =>
-    apiFetch<Page>(`/api/pages/${pageId}?tenantId=${tenantId}`),
+    apiFetch<PageDetailPayload>(`/api/pages/${pageId}?tenantId=${tenantId}`),
   updatePage: (
     pageId: string,
     data: {
       tenantId: string;
       title?: string;
       content?: string;
+      editorStateJson?: string;
       boardId?: string | null;
       cardId?: string | null;
     }
@@ -67,7 +74,10 @@ export const pagesApi = {
     }),
   getSharedPage: (token: string) =>
     apiFetch<SharedPagePayload>(`/api/share/page/${token}`),
-  updateSharedPage: (token: string, data: { content?: string; title?: string }) =>
+  updateSharedPage: (
+    token: string,
+    data: { content?: string; title?: string; editorStateJson?: string }
+  ) =>
     apiFetch<SharedPagePayload>(`/api/share/page/${token}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

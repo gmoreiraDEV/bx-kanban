@@ -18,6 +18,7 @@ const PublicSharePage: React.FC<PublicSharePageProps> = ({ token }) => {
   const [page, setPage] = useState<Page | null>(null);
   const [error, setError] = useState(false);
   const [content, setContent] = useState('');
+  const [editorStateJson, setEditorStateJson] = useState('{}');
   const [isSaving, setIsSaving] = useState(false);
   const [editorMode, setEditorMode] = useState<'rich' | 'markdown'>('rich');
 
@@ -30,6 +31,7 @@ const PublicSharePage: React.FC<PublicSharePageProps> = ({ token }) => {
         setInvite(payload.invite);
         setPage(payload.page);
         setContent(payload.page.content);
+        setEditorStateJson(payload.page.editorStateJson || '{}');
         setEditorMode('rich');
       } catch {
         setError(true);
@@ -44,10 +46,11 @@ const PublicSharePage: React.FC<PublicSharePageProps> = ({ token }) => {
 
     setIsSaving(true);
     try {
-      const payload = await pagesApi.updateSharedPage(token, { content });
+      const payload = await pagesApi.updateSharedPage(token, { content, editorStateJson });
       setInvite(payload.invite);
       setPage(payload.page);
       setContent(payload.page.content);
+      setEditorStateJson(payload.page.editorStateJson || '{}');
     } finally {
       setIsSaving(false);
     }
@@ -136,6 +139,7 @@ const PublicSharePage: React.FC<PublicSharePageProps> = ({ token }) => {
                   key={page.id}
                   value={content}
                   onChange={setContent}
+                  onEditorStateJsonChange={setEditorStateJson}
                   placeholder="Comece a editar..."
                   minHeightClassName="min-h-[600px]"
                 />

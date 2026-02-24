@@ -1,5 +1,5 @@
-import { Board, Card, CardComment, CardDocumentLink, Column, Page, PageInviteToken, Space, SpaceMember } from '@/types';
-import { boards, cardComments, cards, columns, pageInviteTokens, pages, tenantMembers, tenants } from '@/db/schema';
+import { Board, Card, CardComment, CardDocumentLink, Column, Page, PageInviteToken, PageVersion, Space, SpaceMember } from '@/types';
+import { boards, cardComments, cards, columns, pageInviteTokens, pages, pageVersions, tenantMembers, tenants } from '@/db/schema';
 import { displayNameFromEmail } from '@/lib/server/identity';
 
 const toIsoString = (value: Date | string | null | undefined) => {
@@ -57,12 +57,22 @@ export const mapPage = (row: typeof pages.$inferSelect): Page => ({
   tenantId: row.tenantId,
   title: row.title,
   content: row.content,
+  editorStateJson: row.editorStateJson,
   boardId: row.boardId ?? undefined,
   cardId: row.cardId ?? undefined,
   createdAt: toIsoString(row.createdAt) ?? new Date().toISOString(),
   updatedAt: toIsoString(row.updatedAt) ?? new Date().toISOString(),
 });
 
+
+export const mapPageVersion = (row: typeof pageVersions.$inferSelect): PageVersion => ({
+  id: row.id,
+  pageId: row.pageId,
+  tenantId: row.tenantId,
+  content: row.content,
+  editorStateJson: row.editorStateJson,
+  createdAt: toIsoString(row.createdAt) ?? new Date().toISOString(),
+});
 export const mapPageInviteToken = (
   row: typeof pageInviteTokens.$inferSelect
 ): PageInviteToken => ({

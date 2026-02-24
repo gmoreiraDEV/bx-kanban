@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Share2, ArrowLeft, Save, Trash2, Eye, Edit3 } from 'lucide-react';
+import { Share2, ArrowLeft, Save, Trash2, Eye, Edit3, History } from 'lucide-react';
 
 import ShareModal from '@/components/Pages/ShareModal';
 import MarkdownRenderer from '@/components/Pages/MarkdownRenderer';
@@ -10,26 +10,31 @@ import RichTextEditor from '@/components/Pages/RichTextEditor';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { stackAuth } from '@/lib/stack-auth';
 import { pagesApi } from '@/lib/pagesApi';
-import { Page } from '@/types';
+import { Page, PageVersion } from '@/types';
 
 interface PageDetailPageProps {
   pageId?: string;
 }
 
+const AUTOSAVE_DELAY_MS = 1200;
+
 const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
   const router = useRouter();
   const currentSpace = stackAuth.useCurrentSpace();
   const [page, setPage] = useState<Page | null>(null);
+  const [versions, setVersions] = useState<PageVersion[]>([]);
   const [isSharing, setIsSharing] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
   const [editorMode, setEditorMode] = useState<'rich' | 'markdown'>('rich');
   const [content, setContent] = useState('');
+  const [editorStateJson, setEditorStateJson] = useState('{}');
   const [title, setTitle] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSavedModalOpen, setIsSavedModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [lastSavedSignature, setLastSavedSignature] = useState('');
 
   useEffect(() => {
     if (!pageId || !currentSpace) return;
@@ -37,10 +42,13 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
     const loadPage = async () => {
       setIsLoading(true);
       try {
-        const loaded = await pagesApi.getPage(pageId, currentSpace.id);
-        setPage(loaded);
-        setContent(loaded.content);
-        setTitle(loaded.title);
+        const payload = await pagesApi.getPage(pageId, currentSpace.id);
+        setPage(payload.data);
+        setVersions(payload.versions);
+        setContent(payload.data.content);
+        setTitle(payload.data.title);
+        setEditorStateJson(payload.data.editorStateJson || '{}');
+        setLastSavedSignature(`${payload.data.title}::${payload.data.content}::${payload.data.editorStateJson || '{}'}`);
         setEditorMode('rich');
       } catch {
         router.push('/pages');
@@ -52,22 +60,40 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
     void loadPage();
   }, [pageId, currentSpace, router]);
 
-  const savePage = async () => {
+  const savePayload = useMemo(
+    () => ({ title, content, editorStateJson }),
+    [title, content, editorStateJson]
+  );
+
+  const savePage = async (isManual = true) => {
     if (!page || !currentSpace) return;
 
     setIsSaving(true);
     try {
       const updated = await pagesApi.updatePage(page.id, {
         tenantId: currentSpace.id,
-        title,
-        content,
+        ...savePayload,
       });
       setPage(updated);
-      setIsSavedModalOpen(true);
+      const signature = `${updated.title}::${updated.content}::${updated.editorStateJson}`;
+      setLastSavedSignature(signature);
+      if (isManual) setIsSavedModalOpen(true);
     } finally {
       setIsSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (!page || !currentSpace) return;
+    const nextSignature = `${title}::${content}::${editorStateJson}`;
+    if (nextSignature === lastSavedSignature) return;
+
+    const timeout = window.setTimeout(() => {
+      void savePage(false);
+    }, AUTOSAVE_DELAY_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [page, currentSpace, title, content, editorStateJson, lastSavedSignature]);
 
   const deletePage = async () => {
     if (!page || !currentSpace || isDeleting) return;
@@ -115,7 +141,7 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
             <Share2 className="w-4 h-4" /> Compartilhar
           </button>
           <button
-            onClick={savePage}
+            onClick={() => void savePage(true)}
             disabled={isSaving}
             className="flex items-center gap-2 px-4 py-1.5 text-sm bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 disabled:opacity-70"
           >
@@ -131,57 +157,86 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
       </div>
 
       <div className="flex-1 overflow-auto p-8 md:p-12">
-        <div className="max-w-4xl mx-auto min-h-full">
-          {isEditing ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-slate-50 w-fit">
-                <button
-                  type="button"
-                  onClick={() => setEditorMode('rich')}
-                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                    editorMode === 'rich'
-                      ? 'bg-white text-slate-800 shadow-sm font-semibold'
-                      : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  Rich Text
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditorMode('markdown')}
-                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                    editorMode === 'markdown'
-                      ? 'bg-white text-slate-800 shadow-sm font-semibold'
-                      : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  Markdown
-                </button>
-              </div>
+        <div className="max-w-5xl mx-auto min-h-full grid gap-6 lg:grid-cols-[1fr_280px]">
+          <div>
+            {isEditing ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-slate-50 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setEditorMode('rich')}
+                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                      editorMode === 'rich'
+                        ? 'bg-white text-slate-800 shadow-sm font-semibold'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    Rich Text
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorMode('markdown')}
+                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                      editorMode === 'markdown'
+                        ? 'bg-white text-slate-800 shadow-sm font-semibold'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    Markdown
+                  </button>
+                </div>
 
-              {editorMode === 'rich' ? (
-                <RichTextEditor
-                  key={page.id}
-                  value={content}
-                  onChange={setContent}
-                  placeholder="Comece a escrever..."
-                  minHeightClassName="min-h-[560px]"
-                />
+                {editorMode === 'rich' ? (
+                  <RichTextEditor
+                    key={page.id}
+                    value={content}
+                    onChange={setContent}
+                    onEditorStateJsonChange={setEditorStateJson}
+                    placeholder="Comece a escrever..."
+                    minHeightClassName="min-h-[560px]"
+                  />
+                ) : (
+                  <textarea
+                    value={content}
+                    onChange={e => setContent(e.target.value)}
+                    className="w-full h-full min-h-[560px] border border-slate-200 rounded-xl p-4 outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-mono leading-relaxed resize-none"
+                    placeholder="Digite aqui em markdown..."
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="max-w-none">
+                <h1 className="text-4xl font-black text-slate-900 mb-8">{title}</h1>
+                <MarkdownRenderer content={content} />
+              </div>
+            )}
+          </div>
+
+          <aside className="border border-slate-200 rounded-xl p-4 h-fit bg-slate-50/50">
+            <div className="flex items-center gap-2 text-slate-700 mb-3">
+              <History className="w-4 h-4" />
+              <h3 className="font-semibold">Histórico (simples)</h3>
+            </div>
+            <div className="space-y-2 max-h-[520px] overflow-auto pr-1">
+              {versions.length === 0 ? (
+                <p className="text-xs text-slate-500">Sem versões salvas ainda.</p>
               ) : (
-                <textarea
-                  value={content}
-                  onChange={e => setContent(e.target.value)}
-                  className="w-full h-full min-h-[560px] border border-slate-200 rounded-xl p-4 outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-mono leading-relaxed resize-none"
-                  placeholder="Digite aqui em markdown..."
-                />
+                versions.map(version => (
+                  <button
+                    type="button"
+                    key={version.id}
+                    onClick={() => setContent(version.content)}
+                    className="w-full text-left p-2 rounded-md border border-slate-200 bg-white hover:bg-slate-50"
+                  >
+                    <div className="text-xs text-slate-700 font-medium">
+                      {new Date(version.createdAt).toLocaleString()}
+                    </div>
+                    <div className="text-xs text-slate-500 truncate">{version.content.slice(0, 80) || '(vazio)'}</div>
+                  </button>
+                ))
               )}
             </div>
-          ) : (
-            <div className="max-w-none">
-              <h1 className="text-4xl font-black text-slate-900 mb-8">{title}</h1>
-              <MarkdownRenderer content={content} />
-            </div>
-          )}
+          </aside>
         </div>
       </div>
 

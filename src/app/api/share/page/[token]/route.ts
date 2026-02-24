@@ -71,6 +71,7 @@ export const PATCH = async (request: Request, context: RouteContext) => {
   const body = await request.json();
   const content = body?.content as string | undefined;
   const title = body?.title as string | undefined;
+  const editorStateJson = body?.editorStateJson as string | undefined;
 
   const existingPage = await db
     .select()
@@ -87,6 +88,7 @@ export const PATCH = async (request: Request, context: RouteContext) => {
     .set({
       title: title ?? existingPage[0].title,
       content: content ?? existingPage[0].content,
+      editorStateJson: editorStateJson ?? existingPage[0].editorStateJson,
       updatedAt: new Date(),
     })
     .where(eq(pages.id, invite.pageId))
