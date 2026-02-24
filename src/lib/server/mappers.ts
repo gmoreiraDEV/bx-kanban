@@ -1,4 +1,4 @@
-import { Board, Card, CardComment, Column, Page, PageInviteToken, Space, SpaceMember } from '@/types';
+import { Board, Card, CardComment, CardDocumentLink, Column, Page, PageInviteToken, Space, SpaceMember } from '@/types';
 import { boards, cardComments, cards, columns, pageInviteTokens, pages, tenantMembers, tenants } from '@/db/schema';
 import { displayNameFromEmail } from '@/lib/server/identity';
 
@@ -38,6 +38,7 @@ export const mapCard = (row: typeof cards.$inferSelect): Card => ({
   position: row.position,
   createdAt: toIsoString(row.createdAt) ?? new Date().toISOString(),
   updatedAt: toIsoString(row.updatedAt) ?? new Date().toISOString(),
+  documentLinks: [],
 });
 
 export const mapCardComment = (row: typeof cardComments.$inferSelect): CardComment => ({
@@ -99,3 +100,8 @@ export const mapSpace = (
     members: mappedMembers,
   };
 };
+
+export const mapCardDocumentLink = (row: { pageId: string; pageTitle: string }): CardDocumentLink => ({
+  pageId: row.pageId,
+  pageTitle: row.pageTitle,
+});

@@ -116,6 +116,28 @@ export const pages = pgTable('pages', {
   updatedAt: timestampWithTimezone('updated_at'),
 });
 
+
+export const cardDocumentLinks = pgTable(
+  'card_document_links',
+  {
+    cardId: text('card_id')
+      .notNull()
+      .references(() => cards.id, { onDelete: 'cascade' }),
+    pageId: text('page_id')
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    tenantId: text('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    createdAt: timestampWithTimezone('created_at'),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.cardId, table.pageId] }),
+    cardIdx: index('card_document_links_card_idx').on(table.cardId),
+    pageIdx: index('card_document_links_page_idx').on(table.pageId),
+  })
+);
+
 export const pageInviteTokens = pgTable('page_invite_tokens', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id')

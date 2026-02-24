@@ -9,6 +9,8 @@ type SharedPagePayload = {
 
 export const pagesApi = {
   getPages: (tenantId: string) => apiFetch<Page[]>(`/api/pages?tenantId=${tenantId}`),
+  getPagesByTenantAndQuery: (tenantId: string, query: string) =>
+    apiFetch<Page[]>(`/api/pages?tenantId=${tenantId}&query=${encodeURIComponent(query)}`),
   createPage: (data: {
     tenantId: string;
     title: string;

@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, ilike } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { db } from '@/db/drizzle';
@@ -8,6 +8,7 @@ import { mapPage } from '@/lib/server/mappers';
 export const GET = async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const tenantId = searchParams.get('tenantId');
+  const query = searchParams.get('query')?.trim();
 
   if (!tenantId) {
     return NextResponse.json({ error: 'tenantId is required.' }, { status: 400 });
@@ -16,7 +17,11 @@ export const GET = async (request: Request) => {
   const rows = await db
     .select()
     .from(pages)
-    .where(eq(pages.tenantId, tenantId))
+    .where(
+      query
+        ? and(eq(pages.tenantId, tenantId), ilike(pages.title, `%${query}%`))
+        : eq(pages.tenantId, tenantId)
+    )
     .orderBy(desc(pages.updatedAt));
 
   return NextResponse.json({ data: rows.map(mapPage) });

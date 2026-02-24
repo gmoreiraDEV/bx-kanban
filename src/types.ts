@@ -54,6 +54,12 @@ export interface Card {
   position: number;
   createdAt: string;
   updatedAt: string;
+  documentLinks: CardDocumentLink[];
+}
+
+export interface CardDocumentLink {
+  pageId: string;
+  pageTitle: string;
 }
 
 export interface CardComment {

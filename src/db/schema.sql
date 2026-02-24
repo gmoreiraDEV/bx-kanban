@@ -83,6 +83,17 @@ CREATE TABLE IF NOT EXISTS pages (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS card_document_links (
+  card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+  page_id UUID NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (card_id, page_id)
+);
+
+CREATE INDEX IF NOT EXISTS card_document_links_card_idx ON card_document_links (card_id);
+CREATE INDEX IF NOT EXISTS card_document_links_page_idx ON card_document_links (page_id);
+
 CREATE TABLE IF NOT EXISTS page_invite_tokens (
   id UUID PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,

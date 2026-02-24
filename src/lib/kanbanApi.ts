@@ -1,4 +1,4 @@
-import { Board, Card, CardComment, Column } from '@/types';
+import { Board, Card, CardComment, CardDocumentLink, Column } from '@/types';
 import { apiFetch } from '@/lib/apiClient';
 
 export const kanbanApi = {
@@ -42,6 +42,7 @@ export const kanbanApi = {
     description?: string;
     assignedUserId?: string | null;
     dueDate?: string | null;
+    documentLinks?: CardDocumentLink[];
     position: number;
   }) =>
     apiFetch<Card>('/api/kanban/cards', {
@@ -57,6 +58,7 @@ export const kanbanApi = {
     dueDate?: string | null;
     columnId?: string;
     position?: number;
+    documentLinks?: CardDocumentLink[];
   }) =>
     apiFetch<Card>('/api/kanban/cards', {
       method: 'PATCH',
