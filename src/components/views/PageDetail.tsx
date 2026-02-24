@@ -26,6 +26,7 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
   const [isSharing, setIsSharing] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
   const [editorMode, setEditorMode] = useState<'rich' | 'markdown'>('rich');
+  const [markdownViewMode, setMarkdownViewMode] = useState<'preview' | 'split' | 'editor'>('preview');
   const [content, setContent] = useState('');
   const [editorStateJson, setEditorStateJson] = useState('{}');
   const [title, setTitle] = useState('');
@@ -175,7 +176,10 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setEditorMode('markdown')}
+                    onClick={() => {
+                      setEditorMode('markdown');
+                      setMarkdownViewMode('preview');
+                    }}
                     className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                       editorMode === 'markdown'
                         ? 'bg-white text-slate-800 shadow-sm font-semibold'
@@ -197,12 +201,81 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
                     minHeightClassName="min-h-[560px]"
                   />
                 ) : (
-                  <textarea
-                    value={content}
-                    onChange={e => setContent(e.target.value)}
-                    className="w-full h-full min-h-[560px] border border-slate-200 rounded-xl p-4 outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-mono leading-relaxed resize-none"
-                    placeholder="Digite aqui em markdown..."
-                  />
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-slate-50 w-fit">
+                      <button
+                        type="button"
+                        onClick={() => setMarkdownViewMode('preview')}
+                        className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                          markdownViewMode === 'preview'
+                            ? 'bg-white text-slate-800 shadow-sm font-semibold'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        Preview
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMarkdownViewMode('split')}
+                        className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                          markdownViewMode === 'split'
+                            ? 'bg-white text-slate-800 shadow-sm font-semibold'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        Dividido
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMarkdownViewMode('editor')}
+                        className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                          markdownViewMode === 'editor'
+                            ? 'bg-white text-slate-800 shadow-sm font-semibold'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        Editor
+                      </button>
+                    </div>
+
+                    {markdownViewMode === 'preview' ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Preview</p>
+                        <div className="min-h-[560px] border border-slate-200 rounded-xl p-4 bg-white">
+                          <MarkdownRenderer content={content} />
+                        </div>
+                      </div>
+                    ) : markdownViewMode === 'editor' ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Markdown</p>
+                        <textarea
+                          value={content}
+                          onChange={e => setContent(e.target.value)}
+                          className="w-full h-full min-h-[560px] border border-slate-200 rounded-xl p-4 outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-mono leading-relaxed resize-none"
+                          placeholder="Digite aqui em markdown..."
+                        />
+                      </div>
+                    ) : (
+                      <div className="grid gap-4 xl:grid-cols-2">
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Markdown</p>
+                          <textarea
+                            value={content}
+                            onChange={e => setContent(e.target.value)}
+                            className="w-full h-full min-h-[560px] border border-slate-200 rounded-xl p-4 outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-mono leading-relaxed resize-none"
+                            placeholder="Digite aqui em markdown..."
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Preview em tempo real</p>
+                          <div className="min-h-[560px] border border-slate-200 rounded-xl p-4 bg-white">
+                            <MarkdownRenderer content={content} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
@@ -226,7 +299,10 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
                   <button
                     type="button"
                     key={version.id}
-                    onClick={() => setContent(version.content)}
+                    onClick={() => {
+                      setContent(version.content);
+                      setEditorStateJson(version.editorStateJson || '{}');
+                    }}
                     className="w-full text-left p-2 rounded-md border border-slate-200 bg-white hover:bg-slate-50"
                   >
                     <div className="text-xs text-slate-700 font-medium">
