@@ -146,11 +146,19 @@ const EditorHydrationPlugin: React.FC<{
   editorStateJson?: string;
   lastMarkdownRef: React.MutableRefObject<string>;
   isHydratingRef: React.MutableRefObject<boolean>;
-}> = ({ value, editorStateJson, lastMarkdownRef, isHydratingRef }) => {
+  lastEditorStateJsonRef: React.MutableRefObject<string>;
+}> = ({ value, editorStateJson, lastMarkdownRef, isHydratingRef, lastEditorStateJsonRef }) => {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
-    if (value === lastMarkdownRef.current && !editorStateJson) return;
+    const nextEditorStateJson = editorStateJson ?? '';
+
+    if (
+      value === lastMarkdownRef.current &&
+      nextEditorStateJson === lastEditorStateJsonRef.current
+    ) {
+      return;
+    }
 
     isHydratingRef.current = true;
 
@@ -163,6 +171,7 @@ const EditorHydrationPlugin: React.FC<{
             const lexicalState = editor.parseEditorState(editorStateJson);
             editor.setEditorState(lexicalState);
             lastMarkdownRef.current = value;
+            lastEditorStateJsonRef.current = nextEditorStateJson;
             return;
           }
 
@@ -188,6 +197,7 @@ const EditorHydrationPlugin: React.FC<{
             });
 
             lastMarkdownRef.current = htmlToMarkdown(parsed.html);
+            lastEditorStateJsonRef.current = nextEditorStateJson;
             return;
           }
         } catch {
@@ -217,12 +227,13 @@ const EditorHydrationPlugin: React.FC<{
       });
 
       lastMarkdownRef.current = value;
+      lastEditorStateJsonRef.current = nextEditorStateJson;
     } finally {
       queueMicrotask(() => {
         isHydratingRef.current = false;
       });
     }
-  }, [editor, editorStateJson, isHydratingRef, lastMarkdownRef, value]);
+  }, [editor, editorStateJson, lastEditorStateJsonRef, isHydratingRef, lastMarkdownRef, value]);
 
   return null;
 };
@@ -237,6 +248,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 }) => {
   const lastMarkdownRef = useRef(value);
   const isHydratingRef = useRef(false);
+  const lastEditorStateJsonRef = useRef(editorStateJson ?? '');
 
   const initialConfig = useMemo(
     () => ({
@@ -279,6 +291,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             editorStateJson={editorStateJson}
             lastMarkdownRef={lastMarkdownRef}
             isHydratingRef={isHydratingRef}
+            lastEditorStateJsonRef={lastEditorStateJsonRef}
           />
 
           <OnChangePlugin
@@ -292,7 +305,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 onChange(markdown);
               });
 
-              onEditorStateJsonChange?.(JSON.stringify(editorState.toJSON()));
+              const serialized = JSON.stringify(editorState.toJSON());
+              lastEditorStateJsonRef.current = serialized;
+              onEditorStateJsonChange?.(serialized);
             }}
           />
         </div>
