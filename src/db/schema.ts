@@ -110,11 +110,31 @@ export const pages = pgTable('pages', {
     .references(() => tenants.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   content: text('content').notNull(),
+  editorStateJson: text('editor_state_json').notNull().default('{}'),
   boardId: text('board_id').references(() => boards.id, { onDelete: 'set null' }),
   cardId: text('card_id').references(() => cards.id, { onDelete: 'set null' }),
   createdAt: timestampWithTimezone('created_at'),
   updatedAt: timestampWithTimezone('updated_at'),
 });
+
+export const pageVersions = pgTable(
+  'page_versions',
+  {
+    id: text('id').primaryKey(),
+    pageId: text('page_id')
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    tenantId: text('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    editorStateJson: text('editor_state_json').notNull().default('{}'),
+    createdAt: timestampWithTimezone('created_at'),
+  },
+  table => ({
+    pageCreatedIdx: index('page_versions_page_created_idx').on(table.pageId, table.createdAt),
+  })
+);
 
 
 export const cardDocumentLinks = pgTable(

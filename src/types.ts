@@ -78,10 +78,20 @@ export interface Page {
   tenantId: string;
   title: string;
   content: string;
+  editorStateJson: string;
   boardId?: string;
   cardId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PageVersion {
+  id: string;
+  pageId: string;
+  tenantId: string;
+  content: string;
+  editorStateJson: string;
+  createdAt: string;
 }
 
 export interface PageInviteToken {

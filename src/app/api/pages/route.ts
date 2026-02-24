@@ -34,6 +34,7 @@ export const POST = async (request: Request) => {
   const content = body?.content as string | undefined;
   const boardId = (body?.boardId as string | undefined) ?? null;
   const cardId = (body?.cardId as string | undefined) ?? null;
+  const editorStateJson = (body?.editorStateJson as string | undefined) ?? '{}';
 
   if (!tenantId || !title || !content) {
     return NextResponse.json({ error: 'tenantId, title, and content are required.' }, { status: 400 });
@@ -56,6 +57,7 @@ export const POST = async (request: Request) => {
       tenantId,
       title,
       content,
+      editorStateJson,
       boardId,
       cardId,
       createdAt: new Date(),

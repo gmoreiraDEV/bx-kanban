@@ -1,9 +1,9 @@
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { db } from '@/db/drizzle';
-import { pages } from '@/db/schema';
-import { mapPage } from '@/lib/server/mappers';
+import { pages, pageVersions } from '@/db/schema';
+import { mapPage, mapPageVersion } from '@/lib/server/mappers';
 
 interface RouteContext {
   params: Promise<{ pageId: string }>;
@@ -28,7 +28,17 @@ export const GET = async (request: Request, context: RouteContext) => {
     return NextResponse.json({ error: 'Page not found.' }, { status: 404 });
   }
 
-  return NextResponse.json({ data: mapPage(page[0]) });
+  const versions = await db
+    .select()
+    .from(pageVersions)
+    .where(and(eq(pageVersions.pageId, pageId), eq(pageVersions.tenantId, tenantId)))
+    .orderBy(desc(pageVersions.createdAt))
+    .limit(20);
+
+  return NextResponse.json({
+    data: mapPage(page[0]),
+    versions: versions.map(mapPageVersion),
+  });
 };
 
 export const PATCH = async (request: Request, context: RouteContext) => {
@@ -37,6 +47,7 @@ export const PATCH = async (request: Request, context: RouteContext) => {
   const tenantId = body?.tenantId as string | undefined;
   const title = body?.title as string | undefined;
   const content = body?.content as string | undefined;
+  const editorStateJson = body?.editorStateJson as string | undefined;
   const boardId = body?.boardId as string | null | undefined;
   const cardId = body?.cardId as string | null | undefined;
 
@@ -54,17 +65,35 @@ export const PATCH = async (request: Request, context: RouteContext) => {
     return NextResponse.json({ error: 'Page not found.' }, { status: 404 });
   }
 
+  const previous = existing[0];
+
   const [updated] = await db
     .update(pages)
     .set({
-      title: title ?? existing[0].title,
-      content: content ?? existing[0].content,
-      boardId: boardId === undefined ? existing[0].boardId : boardId,
-      cardId: cardId === undefined ? existing[0].cardId : cardId,
+      title: title ?? previous.title,
+      content: content ?? previous.content,
+      editorStateJson: editorStateJson ?? previous.editorStateJson,
+      boardId: boardId === undefined ? previous.boardId : boardId,
+      cardId: cardId === undefined ? previous.cardId : cardId,
       updatedAt: new Date(),
     })
     .where(and(eq(pages.id, pageId), eq(pages.tenantId, tenantId)))
     .returning();
+
+  const contentChanged = content !== undefined && content !== previous.content;
+  const editorStateChanged =
+    editorStateJson !== undefined && editorStateJson !== previous.editorStateJson;
+
+  if (contentChanged || editorStateChanged) {
+    await db.insert(pageVersions).values({
+      id: crypto.randomUUID(),
+      pageId,
+      tenantId,
+      content: previous.content,
+      editorStateJson: previous.editorStateJson,
+      createdAt: new Date(),
+    });
+  }
 
   return NextResponse.json({ data: mapPage(updated) });
 };
