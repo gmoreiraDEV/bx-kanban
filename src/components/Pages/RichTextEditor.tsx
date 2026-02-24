@@ -261,6 +261,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               <ContentEditable
                 className={cn('rich-editor w-full px-4 py-3 outline-none text-slate-700 leading-relaxed', minHeightClassName)}
                 aria-placeholder={placeholder}
+                placeholder={<span />}
               />
             }
             placeholder={<div className="pointer-events-none absolute top-3 left-4 text-slate-400">{placeholder}</div>}
