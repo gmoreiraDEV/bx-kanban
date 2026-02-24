@@ -139,6 +139,7 @@ const PublicSharePage: React.FC<PublicSharePageProps> = ({ token }) => {
                   key={page.id}
                   value={content}
                   onChange={setContent}
+                  editorStateJson={editorStateJson}
                   onEditorStateJsonChange={setEditorStateJson}
                   placeholder="Comece a editar..."
                   minHeightClassName="min-h-[600px]"

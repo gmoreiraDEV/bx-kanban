@@ -191,6 +191,7 @@ const PageDetailPage: React.FC<PageDetailPageProps> = ({ pageId }) => {
                     key={page.id}
                     value={content}
                     onChange={setContent}
+                    editorStateJson={editorStateJson}
                     onEditorStateJsonChange={setEditorStateJson}
                     placeholder="Comece a escrever..."
                     minHeightClassName="min-h-[560px]"
