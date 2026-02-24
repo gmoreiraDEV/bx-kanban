@@ -179,7 +179,7 @@ const EditorHydrationPlugin: React.FC<{
                 return;
               }
 
-              const nodes = $generateNodesFromDOM(editor, rootElement);
+              const nodes = $generateNodesFromDOM(editor, dom);
               if (nodes.length > 0) {
                 root.append(...nodes);
               } else {
@@ -208,7 +208,7 @@ const EditorHydrationPlugin: React.FC<{
           return;
         }
 
-        const nodes = $generateNodesFromDOM(editor, rootElement);
+        const nodes = $generateNodesFromDOM(editor, dom);
         if (nodes.length > 0) {
           root.append(...nodes);
         } else {
